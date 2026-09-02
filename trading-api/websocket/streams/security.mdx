@@ -7,11 +7,15 @@ Streams the securities available to your account. Subscribe to this first — it
 tells you what symbols exist and, critically, the increments your orders must
 respect.
 
+The first message carries a snapshot of every available security and is flagged
+`initial: true`. Every message after that is a **delta** against that snapshot,
+not a fresh copy of the security master.
+
 ## Subscribe
 
-```json
+```json Client → server
 {
-  "reqid": 1,
+  "reqid": 2,
   "type": "subscribe",
   "streams": [{ "name": "Security" }]
 }
@@ -20,10 +24,48 @@ respect.
 ### Parameters
 
 <ParamField body="Symbols" type="string[]">
-  Optional list of symbols to filter on. Omit for all securities.
+  Optional list of symbols to filter the subscription on. Omit for all securities.
 </ParamField>
 
 ## Response
+
+```json Server → client
+{
+  "reqid": 2,
+  "type": "Security",
+  "ts": "2021-09-14T22:11:47.512168Z",
+  "initial": true,
+  "seq": 1,
+  "data": [
+    {
+      "Timestamp": "2021-09-14T22:11:47.512168Z",
+      "UpdateAction": "Update",
+      "SecurityID": 2,
+      "Symbol": "ETH-USD",
+      "MinPriceIncrement": "0.01",
+      "MinSizeIncrement": "0.00000001",
+      "MinAmtIncrement": "0.01",
+      "MinimumSize": "0.00000001",
+      "MaximumSize": "10000000",
+      "QuoteCurrency": "USD",
+      "BaseCurrency": "ETH",
+      "DefaultPriceIncrement": "0.01",
+      "DefaultSizeIncrement": "0.0001",
+      "PriceDisplaySpec": "M.m",
+      "SizeDisplaySpec": "M.m",
+      "NormalSize": "2",
+      "ProductType": "Spot",
+      "PositionCurrency": "ETH",
+      "SettlementCurrency": "USD",
+      "NotionalMultiplier": "1",
+      "SizeBuckets": [{ "Size": "0" }],
+      "DisplaySymbol": "ETH-USD",
+      "Description": "Ethereum/U.S. Dollar",
+      "Rank": 2
+    }
+  ]
+}
+```
 
 <ResponseField name="Timestamp" type="datetime" required>Timestamp of message publication.</ResponseField>
 <ResponseField name="UpdateAction" type="string" required>
@@ -79,4 +121,35 @@ is not a whole multiple of the relevant increment will be rejected. Note that
 **which** increment applies depends on the currency you express the order in:
 `MinSizeIncrement` for base-currency orders, `MinAmtIncrement` for quote-currency
 orders. Round before submitting rather than reacting to a rejection.
+</Warning>
+
+## Maintaining a local security master
+
+Merge each row into a local map keyed by `Symbol`: apply rows with
+`UpdateAction: "Update"`, and delete the entry on `UpdateAction: "Remove"`.
+`SecurityID` is informational and is not the merge key.
+
+<Warning>
+Rebuilding your security master from each message — rather than merging into the
+snapshot — silently empties it. Only the first message is a full set; every later
+message contains just the securities that changed, so a client that replaces its
+map on each message ends up believing only one or two symbols are tradable and
+rejects its own orders on everything else. Equally, a client that ignores
+`UpdateAction` keeps quoting and sizing against securities that have been
+withdrawn.
+</Warning>
+
+<Warning>
+Two fields are not shaped the way the field table above implies, and a strict
+deserialiser will fail on both:
+
+- `SecurityID` is documented as a string but is published as a JSON number
+  (`"SecurityID": 2`). Parse it permissively; do not key anything off it.
+- `SizeBuckets` is documented as an array of decimals but is published as an
+  array of objects (`[{ "Size": "0" }]`).
+
+`SizeDisplaySpec` is also present on the wire — the counterpart to
+`PriceDisplaySpec` — but is absent from the specification's field table, so
+neither its optionality nor its full value set is defined. Treat it as display
+metadata only.
 </Warning>

@@ -1,0 +1,170 @@
+---
+title: "FIX security list"
+sidebarTitle: "Security list"
+description: "Requesting tradeable securities over FIX and reading their increments and size limits."
+---
+
+The security list tells you which instruments you can trade and carries the
+increments and size limits your orders are validated against. Request it after
+logon and before submitting any order.
+
+Examples below use `^A` for the ASCII 01 delimiter.
+
+## SecurityListRequest (35=x)
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| — | `<MessageHeader>` | Y | `MsgType (35) = x` |
+| `320` | SecurityReqID | Y | Unique ID to identify this request |
+| `559` | SecurityListRequestType | Y | Identifies the type of Security List Request. `4` = ALL_SECURITIES |
+| — | `<MessageTrailer>` | Y | Standard trailer |
+
+```text Client → server
+8=FIX.4.4^A9=88^A35=x^A34=3^A49=CUSTOMER^A52=20220930-13:28:16.451^A56=Trillion Digital^A320=id-220929160342682-27^A559=4^A10=156^A
+```
+
+<Note>
+`4` (ALL_SECURITIES) is the only `SecurityListRequestType` the specification
+documents. There is no symbol-level filter on the request — you receive the full
+list and filter client-side.
+</Note>
+
+## SecurityList (35=y)
+
+Returns the list of securities matching the criteria specified in the
+SecurityListRequest. `SecurityReqID` (320) is echoed back so you can correlate
+the response with your request.
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| — | `<MessageHeader>` | Y | `MsgType (35) = y` |
+| `320` | SecurityReqID | Y | Unique ID to identify this request |
+| `322` | SecurityResponseID | Y | Identifier for the SecurityList message |
+| `560` | SecurityRequestResult | Y | Result of the Security Request identified by the `SecurityReqID` |
+| `393` | TotalNoRelatedSym | N | Used to indicate the total number of securities being returned for this request. Used in the event that message fragmentation is required |
+| `893` | LastFragment | N | Indicates whether this is the last fragment in a sequence of message fragments. Only required where the message has been fragmented |
+| `146` | NoRelatedSym | | Number of entries in the repeating group below |
+| — | Component Block `<Instrument>` | Y if `560=0` | The per-security attributes, one entry per instrument |
+| — | `<MessageTrailer>` | Y | Standard trailer |
+
+### SecurityRequestResult (560)
+
+| Value | Meaning |
+| --- | --- |
+| `0` | Valid Request |
+| `1` | invalid or Unsupported Request |
+| `2` | No instruments found that match the selection criteria |
+| `3` | Not authorized to retrieve instrument data |
+| `4` | Instrument data temporarily unavailable |
+| `5` | Request for instrument data not supported |
+
+The `<Instrument>` component block is required only when `560=0`. For any other
+value the specification does not require it, so a `35=y` carrying `560=1`–`5`
+should be treated as returning no securities — handle each of those five results
+explicitly rather than iterating an empty group and continuing as though the
+tradeable universe were empty.
+
+### NoRelatedSym repeating group
+
+Each entry describes one security.
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `→55` | Symbol | Y | Common "human understood" representation of the security |
+| `→48` | SecurityID | Y | Internal Trillion Digital ID for the security — for information only |
+| `→561` | RoundLot | Y | The trading lot size of a security |
+| `→562` | MinTradeVol | Y | Minimum Trading Volume for a security |
+| `→969` | MinPriceIncrement | Y | The smallest difference between quoted prices for this instrument |
+| `→1140` | MaxTradeVol | Y | Maximum Size for an order on this security |
+
+<Note>
+`SecurityID` (48) is an internal identifier and is informational only. Address
+orders, market data requests, and cancels by `Symbol` (55).
+</Note>
+
+## Example response
+
+```text Server → client
+8=FIX.4.4^A9=243^A35=y^A34=3^A49=Trillion Digital^A52=20220930-13:28:16.514^A56=CUSTOMER^A146=2^A55=ETH-USD^A48=2^A561=0.00000001^A562=0.00000001^A969=0.00001^A1140=1000.00^A55=BTC-USD^A48=24^A561=0.00000001^A562=0^A969=0.01^A1140=1000.00^A320=id-220929160342682-27^A322=1BQM22QR01G00^A560=0^A10=153^A
+```
+
+Decoded, `146=2` introduces two entries:
+
+| Field | ETH-USD | BTC-USD |
+| --- | --- | --- |
+| Symbol (55) | `ETH-USD` | `BTC-USD` |
+| SecurityID (48) | `2` | `24` |
+| RoundLot (561) | `0.00000001` | `0.00000001` |
+| MinTradeVol (562) | `0.00000001` | `0` |
+| MinPriceIncrement (969) | `0.00001` | `0.01` |
+| MaxTradeVol (1140) | `1000.00` | `1000.00` |
+
+<Note>
+In the sample response the group entries appear **before** the trailing `320`,
+`322`, and `560` fields, not after them as the field table is laid out. Each
+entry begins with `Symbol` (55), which is what delimits one instrument from the
+next. A hand-rolled parser that assumes the group runs to the end of the message
+will pull `320`, `322`, and `560` into the final entry.
+</Note>
+
+## How the attributes constrain orders
+
+Four of these fields describe the shape a
+[NewOrderSingle](/trading-api/fix/orders) has to take for the symbol: two bound
+the quantity, one sizes its step, and one sizes the price tick.
+
+| Attribute | Tag | Applies to |
+| --- | --- | --- |
+| MinPriceIncrement | `969` | `Price` (44) — the smallest difference between quoted prices for this instrument |
+| RoundLot | `561` | `OrderQty` (38) — the trading lot size of the security |
+| MinTradeVol | `562` | `OrderQty` (38) — the minimum trading volume |
+| MaxTradeVol | `1140` | `OrderQty` (38) — the maximum size for an order |
+
+Round and clamp before sending. A rejected order comes back as an
+`ExecutionReport` (`35=8`) with `ExecType` (150) `= 8`; `OrdRejReason` (103) is
+optional on that message and `Text` (58) is optional too, so the reason may not
+be machine-readable. Reacting to a rejection also costs a round trip at the exact
+moment the price you wanted has moved.
+
+<Warning>
+**Never hardcode increments.** They are per-symbol and differ by orders of
+magnitude: in the response above `MinPriceIncrement` is `0.00001` for `ETH-USD`
+and `0.01` for `BTC-USD` — a factor of a thousand. A constant table baked into
+your OMS drifts the moment an increment is retuned or a symbol is added, and the
+failure is silent: every affected order is rejected on submission while your
+build still looks correct. Read `35=y` at session start and drive validation from
+it.
+</Warning>
+
+<Warning>
+**`MinTradeVol` (562) can be zero.** `BTC-USD` carries `562=0` in the response
+above. Code that reuses the minimum as a rounding step — `qty = round(qty /
+MinTradeVol) * MinTradeVol` — divides by zero and either throws on the first
+BTC order or emits a `NaN` quantity that is rejected with an unhelpful message.
+`562` is a floor, not an increment; `RoundLot` (561) is the lot size.
+</Warning>
+
+<Warning>
+**Do not assume one message is the whole list.** `TotalNoRelatedSym` (393) and
+`LastFragment` (893) are both optional and neither appears in the sample
+response, so their absence proves nothing. When the list outgrows a single
+message it is fragmented across several `35=y` messages sharing one
+`SecurityReqID`, and a client that treats the first as complete will quietly lose
+symbols — trading continues, but on a truncated universe. Accumulate entries
+until `LastFragment` marks the last fragment, and reconcile the total against
+`393` when it is present.
+</Warning>
+
+<Tip>
+Re-request the security list on every logon rather than persisting it between
+sessions. It is a single round trip, it removes any question of stale increments,
+and it makes the cached copy's lifetime exactly the session's.
+</Tip>
+
+<Note>
+The FIX `SecurityList` carries this fixed set of attributes and no more — it
+exposes no base or quote currency, no separate base- and quote-currency size
+increments, and no display specification. If you need those, the WebSocket
+[`Security`](/trading-api/websocket/streams/security) stream carries the fuller
+security definition.
+</Note>

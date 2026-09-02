@@ -1,15 +1,119 @@
 /*
  * Trillion Digital documentation — custom styles.
+ *
+ * Scope is deliberately narrow. Everything here fixes a concrete legibility
+ * problem in a dense API reference; none of it restyles Mintlify for its own
+ * sake. Every rule works in both light and dark themes.
  */
 
-/*
- * Header logo.
+/* ---------------------------------------------------------------------------
+ * Header logo
  *
- * Mintlify renders the navbar logo at h-7 (28px). The Trillion wordmark is
- * wide and light-weight, so it reads smaller than the default at that height.
- * Scaled 20% to 33.6px. !important is required to beat the Tailwind utility
- * class on the element itself.
- */
+ * Mintlify renders the navbar logo at h-7 (28px). The Trillion wordmark is wide
+ * and light-weight, so it reads smaller than the default at that height. Scaled
+ * 20% to 33.6px. !important is required to beat the Tailwind utility class on
+ * the element itself.
+ * ------------------------------------------------------------------------- */
 .nav-logo {
   height: 33.6px !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * Reference tables
+ *
+ * Mintlify sets [&_td]:min-w-[150px] on every table. That is sensible for prose
+ * tables but wrong for FIX tag tables (Tag | Field | Req | Description) and for
+ * the order state-change matrices, which have seven narrow numeric columns —
+ * 7 x 150px overflows the 1120px content column and the table gets clipped.
+ *
+ * Letting cells size to their content takes the state matrices from a ~1500px
+ * minimum down to ~1165px. Mintlify already wraps tables in a horizontally
+ * scrollable container, so this is purely about needing less of that scroll.
+ * ------------------------------------------------------------------------- */
+table td,
+table th {
+  min-width: 0 !important;
+}
+
+/* First column of a reference table is an identifier — tag number, field name,
+ * status code. Keep it on one line so it stays scannable. */
+table td:first-child,
+table th:first-child {
+  white-space: nowrap;
+}
+
+/* The description column carries the weight; let it take the slack. */
+table td:last-child {
+  min-width: 18rem !important;
+}
+
+/* Tag numbers and numeric columns line up under each other. */
+table td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inline code inside tables is doing identifier work, not prose work — tighten
+ * it so a table of forty enum values does not read as a wall of pills. */
+table code {
+  font-size: 0.8125rem;
+  padding-inline: 0.3em;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * Section rhythm
+ *
+ * Reference pages run to dozens of headings. Without extra separation an h2
+ * reads as just-another-bold-line and the page becomes hard to scan. Give major
+ * sections real air plus a hairline rule; leave h3 alone so field groups inside
+ * a section stay visually subordinate.
+ * ------------------------------------------------------------------------- */
+main h2 {
+  margin-top: 3rem !important;
+  padding-top: 1.25rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* The first h2 on a page follows the intro, not another section — no rule. */
+main h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 2rem !important;
+}
+
+main h3 {
+  margin-top: 2rem !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * Cards
+ *
+ * The landing and "which API" pages lean on card grids for navigation. A hover
+ * affordance makes them read as destinations rather than boxes.
+ * ------------------------------------------------------------------------- */
+#content-area a[href] > div,
+.card {
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------------------------
+ * Code blocks
+ *
+ * Signing examples and FIX wire messages are read line by line and compared
+ * character by character. A little more leading materially helps.
+ * ------------------------------------------------------------------------- */
+pre code {
+  line-height: 1.6;
+}
+
+/* FIX example messages are long single lines of tag=value^A. Let them wrap on
+ * narrow viewports instead of forcing a horizontal scroll across the page. */
+pre code .line {
+  word-break: break-word;
 }

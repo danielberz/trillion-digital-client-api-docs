@@ -1,73 +1,238 @@
 ---
 title: "FIX API"
 sidebarTitle: "Overview"
-description: "FIX 4.4 sessions for institutional market data and order execution."
+description: "FIX 4.4 sessions for real-time market data and order execution."
 ---
 
-Trillion Digital supports the Financial Information eXchange protocol for
-institutional order flow. The FIX specification is version **2.50**, built on
-**FIX 4.4**.
+The FIX API provides access to real-time market data subscription and order
+execution. Additional data is available via the
+[WebSocket API](/trading-api/websocket/overview).
 
-<Note>
-FIX suits firms with existing FIX infrastructure — an OMS or EMS that already
-speaks it. If you are building a new integration from scratch, the
-[WebSocket API](/trading-api/websocket/overview) is faster to implement and
-exposes more of the platform.
-</Note>
+The specification documented here is version **2.50**, last updated 27 February
+2025.
+
+All example messages on these pages use `^A` to denote the ASCII 01 field
+delimiter (SOH).
 
 ## Connectivity
 
-Connectivity is over the internet. Trillion Digital acts as the **acceptor** for
-all FIX sessions; your system is the initiator.
-
-The following are provided during onboarding:
+Connectivity is made to the Trillion Digital API via the internet. Two values are
+provided to the client during onboarding:
 
 - Hostname
 - Port number
+
+## Configuration
+
+Trillion Digital acts as an **acceptor** for all FIX sessions. Your system is the
+initiator.
+
+FIX session information is provided separately during onboarding:
+
 - `SenderCompID`
 - `TargetCompID`
-- API key and secret for logon authentication
+- `StartTime`
+- `EndTime`
+
+Sessions can be configured with or without FIX session level message recovery. A
+typical setup uses two sessions:
+
+| Session | Recovery | Carries |
+| --- | --- | --- |
+| Market data | Disabled | MarketDataRequest and snapshot updates |
+| Orders submission | Enabled | Order entry, amendment, cancellation, execution reports |
+
+<Note>
+Recovery is a per-session property, and the split above is the reason it works.
+On a session with recovery **disabled**, messages missed across a disconnect are
+not retransmitted — tolerable for market data, where each update is a full
+snapshot, and not for order flow, where a missed ExecutionReport is a position
+you do not know you hold. Collapsing both flows onto one recovery-disabled
+session gives that guarantee up silently.
+</Note>
+
+## Protocol
+
+FIX.4.4. See the
+[FIX 4.4 specification](https://www.fixtrading.org/standards/fix-4-4/) for field
+semantics not restated here.
+
+## Timestamps
+
+The direction matters — what the API sends and what it accepts are not the same.
+
+**Sent by the API.** UTC timestamps with millisecond precision:
+
+```
+20140515-19:49:56.659
+```
+
+**Accepted by the API.** UTC timestamps with second, millisecond, or microsecond
+precision, in the format `YYYYddmm-HH:MM:SS.ffffff`:
+
+```
+20140515-19:49:56
+20140515-19:49:56.659
+20140515-19:49:56.659441
+```
+
+<Note>
+The specification writes the accepted pattern as `YYYYddmm-HH:MM:SS.ffffff`. The
+three examples above are the authoritative illustration of the accepted forms.
+</Note>
+
+## Market data requests and updates
+
+After FIX Logon, the client sends a MarketDataRequest (`35=V`) to subscribe to
+market data snapshots. On subscription the client chooses to receive aggregated
+prices as either **price levels** or **size levels**. After subscription,
+Trillion Digital streams market data full snapshot updates as the market prices
+change.
+
+<Note>
+**Market data delta updates will be supported in a future release.** Every update
+you receive today is a MarketDataSnapshotFullRefresh (`35=W`) carrying the
+complete book state for the subscription — replace your book on each message
+rather than applying it as an increment.
+</Note>
+
+Field-level detail, including the mutually exclusive depth and size-bucket
+selectors, is on [Market data](/trading-api/fix/market-data).
+
+## Orders submission and updates
+
+The orders API supports order submission. All orders can be amended and cancelled
+via the API — see [Orders](/trading-api/fix/orders) for NewOrderSingle (`35=D`),
+OrderCancelRequest (`35=F`), OrderCancelReplaceRequest (`35=G`), ExecutionReport
+(`35=8`), and OrderCancelReject (`35=9`).
+
+Orders are routed using the default routing strategy.
 
 <Warning>
-FIX credentials are environment-specific, exactly as REST and WebSocket keys are.
-Sandbox session details will not connect to production.
+**Specifying order strategy and algo parameters will be supported in a future
+release.** The NewOrderSingle field table lists `TargetStrategy` (847) and the
+strategy parameter repeating group, and
+[Order strategies](/trading-api/fix/strategies) documents StopLimit and
+TakeProfitLimit — but sending those tags over FIX is not supported yet, and
+orders continue to route using the default routing strategy. An integrator who
+reads the field table and builds stop or take-profit logic on tag 847 gets a
+plain order routed by the default strategy, not a triggered one.
 </Warning>
+
+## Cancel on Disconnect
+
+By default, all open orders submitted via the FIX session are cancelled on
+disconnect. Cancel on Disconnect does **not** affect:
+
+- Orders for the same user submitted on other sessions.
+- Orders explicitly placed with `CancelOnDisconnect` (20030) = `N`.
+
+`CancelOnDisconnect` (20030) is an optional tag on NewOrderSingle and defaults to
+`Y`. It also appears on the ExecutionReport, reporting whether the order will be
+cancelled when the session disconnects.
+
+<Warning>
+The scope of Cancel on Disconnect is one session, and integrators get it wrong in
+both directions. A dropped FIX session does **not** flatten the account — orders
+placed through the UI, the WebSocket API, or a second FIX session survive
+untouched. Conversely, an unnoticed disconnect on your order session cancels
+every order it submitted unless each one carried `20030=N`, so a reconnecting
+process that assumes its book is intact will resubmit against orders that no
+longer exist.
+</Warning>
+
+## Drop Copy
+
+Sessions receive a full drop copy of all execution reports associated with the
+session user. This includes orders submitted via the UI or other protocols
+(WebSocket and others).
+
+<Warning>
+The ExecutionReport stream is **not** limited to orders you submitted on that
+session. Your engine will receive reports carrying `ClOrdID` values it has never
+issued and `OrderID` values it does not hold. A client that treats an unknown
+identifier as an error — rejecting, alerting, or attempting a corrective cancel —
+will misfire the first time somebody trades through the UI.
+</Warning>
+
+## Header and trailer
+
+### Standard header
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `8` | BeginString | Y | `FIX.4.4`. Must be the first field in the message |
+| `9` | BodyLength | Y | Must be the second field in the message |
+| `35` | MsgType | Y | Must be the third field in the message |
+| `49` | SenderCompID | Y | Provided by Trillion Digital during onboarding |
+| `56` | TargetCompID | Y | Provided by Trillion Digital during onboarding |
+| `34` | MsgSeqNum | Y | |
+| `43` | PossDupFlag | N | Always required for retransmitted messages, whether prompted by the sending system or as the result of a resend request |
+| `97` | PossResend | N | Required when the message may be a duplicate of another message sent under a different sequence number |
+| `52` | SendingTime | Y | |
+| `122` | OrigSendingTime | N | Required for a message re-sent as the result of a ResendRequest. If the data is not available, set to the same value as `SendingTime` (52) |
+
+### Standard trailer
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `10` | CheckSum | Y | Three byte, simple checksum. See the FIX spec for details |
 
 ## Supported message types
 
-### Client to Trillion Digital
+| Message | MsgType | Direction | Purpose |
+| --- | --- | --- | --- |
+| Logon | `A` | Both | Open the session; the client's Logon carries the signature and API key |
+| Heartbeat | `0` | Both | Keep-alive; carries `TestReqID` when answering a Test Request |
+| Test Request | `1` | Both | Force a Heartbeat from the counterparty |
+| Resend Request | `2` | Both | Request retransmission of a sequence range |
+| Reject | `3` | Both | Session-level rejection |
+| Sequence Reset | `4` | Both | Reset or gap-fill sequence numbers |
+| Logout | `5` | Both | Close the session |
+| MarketDataRequest | `V` | Client → Trillion Digital | Subscribe, snapshot, or unsubscribe |
+| MarketDataRequestReject | `Y` | Trillion Digital → client | Subscription refused |
+| MarketDataSnapshotFullRefresh | `W` | Trillion Digital → client | Full book snapshot |
+| NewOrderSingle | `D` | Client → Trillion Digital | Submit an order |
+| OrderCancelRequest | `F` | Client → Trillion Digital | Cancel an existing order |
+| OrderCancelReplaceRequest | `G` | Client → Trillion Digital | Amend price, quantity, or markets |
+| ExecutionReport | `8` | Trillion Digital → client | Acknowledgements, status, and fills |
+| OrderCancelReject | `9` | Trillion Digital → client | Cancel or cancel/replace refused |
+| SecurityListRequest | `x` | Client → Trillion Digital | Request tradeable securities |
+| SecurityList | `y` | Trillion Digital → client | Security definitions |
 
-| Message | MsgType | Purpose |
-| --- | --- | --- |
-| Logon | `A` | Authenticate and open the session |
-| NewOrderSingle | `D` | Submit an order |
-| OrderCancelRequest | `F` | Cancel an order |
-| MarketDataRequest | `V` | Subscribe to market data |
-| SecurityListRequest | `x` | Request tradeable securities |
+<Note>
+Sandbox and production FIX credentials are separate and not interchangeable, as
+they are for REST and the WebSocket — see
+[Authentication](/trading-api/authentication).
+</Note>
 
-### Trillion Digital to client
+## Reference
 
-| Message | MsgType | Purpose |
-| --- | --- | --- |
-| Logon | `A` | Session accepted |
-| ExecutionReport | `8` | Order state and fills |
-| OrderCancelReject | `9` | Cancel refused |
-| MarketDataSnapshotFullRefresh | `W` | Market data |
-| SecurityList | `y` | Security definitions |
+<CardGroup cols={2}>
+  <Card title="Session" icon="plug" href="/trading-api/fix/session">
+    Logon and signature construction, Heartbeat, Test Request, Resend Request,
+    Reject, Sequence Reset, Logout.
+  </Card>
+  <Card title="Market data" icon="chart-line" href="/trading-api/fix/market-data">
+    MarketDataRequest, request rejects, and snapshot full refresh entries.
+  </Card>
+  <Card title="Orders" icon="receipt" href="/trading-api/fix/orders">
+    NewOrderSingle, cancel, cancel/replace, ExecutionReport, OrderCancelReject.
+  </Card>
+  <Card title="Security list" icon="list" href="/trading-api/fix/security-list">
+    SecurityListRequest and SecurityList.
+  </Card>
+  <Card title="Order strategies" icon="diagram-project" href="/trading-api/fix/strategies">
+    StopLimit and TakeProfitLimit parameters.
+  </Card>
+  <Card title="State matrices" icon="table" href="/trading-api/fix/state-matrices">
+    Order state change sequences for fills, cancels, and replaces.
+  </Card>
+  <Card title="Example messages" icon="code" href="/trading-api/fix/examples">
+    Wire-level logon, security list, order, and market data exchanges.
+  </Card>
+</CardGroup>
 
-## Getting started
-
-<Steps>
-  <Step title="Request session details">
-    Email [support@trilliondigital.io](mailto:support@trilliondigital.io) for
-    sandbox FIX connectivity.
-  </Step>
-  <Step title="Implement logon signing">
-    See [Logon](/trading-api/fix/logon) — the signature differs from the REST and
-    WebSocket construction.
-  </Step>
-  <Step title="Certify against sandbox">
-    Exercise logon, security list, market data, order entry, and cancel before
-    requesting production access.
-  </Step>
-</Steps>
+<Update label="V 2.50">
+  Added description for Order Strategies.
+</Update>

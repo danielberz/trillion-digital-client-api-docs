@@ -1,0 +1,344 @@
+---
+title: "FIX orders"
+sidebarTitle: "Orders"
+description: "Order entry, amendment, cancellation, and execution reports over FIX 4.4."
+---
+
+Order flow is five messages: `NewOrderSingle` (`35=D`), `OrderCancelRequest`
+(`35=F`) and `OrderCancelReplaceRequest` (`35=G`) inbound to Trillion Digital;
+`ExecutionReport` (`35=8`) and `OrderCancelReject` (`35=9`) outbound to you.
+Every inbound message is answered on the `ExecutionReport` stream except a
+refused cancel or amendment, which is answered by `OrderCancelReject`.
+
+Examples on this page use `^A` for the ASCII 01 (SOH) field delimiter.
+
+Each table omits the standard `<MessageHeader>` and `<MessageTrailer>`, both of
+which are required on every message.
+
+## NewOrderSingle (35=D)
+
+Submits a new order. Market and Limit orders are currently supported.
+
+```
+8=FIX.4.4^A9=147^A35=D^A34=2^A49=CUSTOMER^A52=20220915-18:30:01.335^A56=Trillion Digital^A11=id-220912164936074-1152^A38=1^A40=2^A44=1630.123^A54=2^A55=ETH-USD^A59=1^A60=20220915-14:30:01^A10=228^A
+```
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `1` | Account | N | The specific account for this order. Required if multiple accounts are enabled |
+| `11` | ClOrdID | Y | Unique identifier for the order as assigned by the client. Must be ≤ 36 characters. UUIDs are recommended |
+| `55` | Symbol | Y | The symbol of the currency pair to place an order on, for example `BTC-USD` |
+| `54` | Side | Y | `1` = Buy, `2` = Sell |
+| `40` | OrdType | Y | `1` = Market, `2` = Limit, `A` = LimitAllIn (requested price/size includes fees) |
+| `38` | OrderQty | Y | Size of the order |
+| `15` | Currency | N | The currency the quantity is specified in. If not specified, defaults to the base currency for the symbol |
+| `44` | Price | N | Price of the order. Required for limit orders |
+| `59` | TimeInForce | Y | `1` = Good Till Cancel (GTC), `3` = Immediate Or Cancel (IOC), `4` = Fill Or Kill (FOK) |
+| `60` | TransactTime | Y | Business timestamp for this request |
+| `126` | ExpireTime | N | Optional expiration time for the order. Only valid on orders with `TimeInForce=1` (GTC). UTCTimestamp |
+| `168` | EffectiveTime | N | Time at which this order will activate and begin sending orders to the market. UTCTimestamp |
+| `847` | TargetStrategy | N | Specifies an order strategy type |
+| `957` | NoStrategyParams | N | The number of strategy parameter repeating groups |
+| `958` | StrategyParameterName | N | The name of the strategy parameter being set |
+| `960` | StrategyParameterValue | N | The value for the strategy parameter being set |
+| `20030` | CancelOnDisconnect | N | Whether this order should be cancelled when this session disconnects, `Y` / `N`. Defaults to `Y` |
+
+<Tip>
+`Currency` (15) decides what `OrderQty` (38) measures. Left unset it is the
+symbol's base currency, so on `ETH-USD` an `OrderQty` of `1` is one ether, not
+one dollar of notional. Send it explicitly rather than relying on the default.
+</Tip>
+
+### Cancel on disconnect
+
+By default all open orders submitted via a FIX session are cancelled when that
+session disconnects. `CancelOnDisconnect` (20030) is the per-order override and
+itself defaults to `Y`, so an order inherits the session behaviour unless you
+send `20030=N`.
+
+Two scopes matter:
+
+- Cancel on disconnect applies only to orders submitted **on the disconnecting
+  session**. Orders for the same user submitted on other sessions are untouched.
+- Orders explicitly placed with `CancelOnDisconnect=N` survive the disconnect.
+
+The value in force for an order is echoed back on every `ExecutionReport` in tag
+`20030`, so you can reconcile what you intended against what the platform
+recorded.
+
+<Warning>
+`20030=N` makes an order outlive the session that created it, and nothing on
+reconnect cleans it up — a new session is not the old session, so its own cancel
+on disconnect will never reach that order. A GTC order sent with `20030=N` keeps
+working after your engine has gone away, and you will only learn it filled from
+the drop copy on your next logon. Use `N` deliberately, and pair it with a
+recovery step that reconciles open orders at logon rather than assuming a clean
+book.
+</Warning>
+
+## OrderCancelRequest (35=F)
+
+Cancels an existing order.
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `11` | ClOrdID | Y | Unique ID of the cancel request as assigned by the client. Must be ≤ 36 characters. UUIDs are recommended |
+| `41` | OrigClOrdID | Y | `ClOrdID` (11) of the previous non-rejected order |
+| `55` | Symbol | Y | The symbol of the currency pair of the order, for example `BTC-USD` |
+| `54` | Side | Y | `1` = Buy, `2` = Sell |
+| `60` | TransactTime | Y | Business timestamp for this request |
+
+The cancel request carries no `OrderID` (37) — orders are referenced over FIX by
+the client-assigned `OrigClOrdID` chain. `Symbol` (55) and `Side` (54) are
+required as well, which engines that treat the identifier alone as sufficient
+routinely omit.
+
+## OrderCancelReplaceRequest (35=G)
+
+Amends the price, quantity, or markets for an existing order.
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `11` | ClOrdID | Y | Unique ID of the request as assigned by the client. Must be ≤ 36 characters. UUIDs are recommended |
+| `41` | OrigClOrdID | Y | `ClOrdID` (11) of the previous non-rejected order |
+| `55` | Symbol | Y | The symbol of the currency pair of the order, for example `BTC-USD` |
+| `54` | Side | Y | `1` = Buy, `2` = Sell |
+| `40` | OrdType | Y | `1` = Market, `2` = Limit, `A` = LimitAllIn (requested price/size includes fees) |
+| `38` | OrderQty | Y | Size of the order |
+| `44` | Price | N | Price of the order. Required for limit orders |
+| `60` | TransactTime | Y | Business timestamp for this request |
+
+<Note>
+The amendment message carries no `TimeInForce` (59), no `ExpireTime` (126) and no
+`CancelOnDisconnect` (20030). Those attributes are fixed at submission; changing
+any of them means cancelling and resubmitting.
+</Note>
+
+### ClOrdID chaining
+
+<Warning>
+`ClOrdID` (11) is unique per order **and** per cancel or amendment request, and
+must be ≤ 36 characters. Two mistakes bite here:
+
+1. **Reuse.** A repeated `ClOrdID` is rejected with `OrdRejReason=6` (Duplicate
+   Order). That rejection is what makes a resend after an uncertain disconnect
+   safe — resend the identical `ClOrdID` rather than minting a new one, or you
+   risk doubling the position.
+2. **Chaining to the wrong ID.** `OrigClOrdID` (41) must be the `ClOrdID` of the
+   previous **non-rejected** order. A rejected amendment does not advance the
+   chain, so after a `35=G` that came back as an `OrderCancelReject`, the live
+   order is still identified by the ID you used *before* it. Chain to the
+   rejected ID and you are naming an order the platform has no record of — the
+   expected answer is `CxlRejReason=1` (Unknown order), and the order you were
+   trying to pull stays working.
+</Warning>
+
+## ExecutionReport (35=8)
+
+Acknowledges or rejects an order or a change to an order, and relays order status
+and fill updates.
+
+```
+8=FIX.4.4^A9=366^A35=8^A34=2^A49=Trillion Digital^A52=20220915-18:30:01.393^A56=CUSTOMER^A1=default^A6=0^A11=id-220912164936074-1152^A14=0^A17=ba22dbe1-cb33-4fcb-9613-921006afdebd^A37=94869628-b862-43e4-bd2d-be85e4295bd4^A38=1.00000000^A39=8^A40=2^A44=1630.123^A54=2^A55=ETH-USD^A58=Unable to submit market order - please try again later.^A59=1^A60=20220915-14:30:01.000^A103=0^A150=8^A151=1.00000000^A20030=N^A20032=A^A10=205^A
+```
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `11` | ClOrdID | N | `ClOrdID` of the order |
+| `41` | OrigClOrdID | N | Set to the `ClOrdID` of the previous accepted order when responding to a Cancel or Cancel/Replace request |
+| `37` | OrderID | Y | Unique identifier of the most recent order as assigned by Trillion Digital |
+| `55` | Symbol | Y | The symbol of the currency pair of the order, for example `BTC-USD` |
+| `54` | Side | Y | `1` = Buy, `2` = Sell |
+| `38` | OrderQty | Y | Size of the order |
+| `44` | Price | N | Price of the order. Required for limit orders |
+| `60` | TransactTime | N | Business timestamp for this execution |
+| `17` | ExecID | Y | Unique identifier of the execution message as assigned by Trillion Digital |
+| `527` | SecondaryExecID | N | Unique identifier of the execution message as assigned by the exchange or liquidity provider. Only specified when `ExecType=Trade` |
+| `150` | ExecType | Y | Describes this specific execution report. See below |
+| `59` | TimeInForce | Y | `1` = Good Till Cancel (GTC), `3` = Immediate Or Cancel (IOC), `4` = Fill Or Kill (FOK) |
+| `40` | OrdType | Y | `1` = Market, `2` = Limit |
+| `39` | OrdStatus | Y | Current state of the order. See below |
+| `151` | LeavesQty | Y | Quantity open for further execution. See below |
+| `14` | CumQty | Y | Currently executed quantity for the chain of orders |
+| `6` | AvgPx | Y | Calculated average price of all fills on this order |
+| `103` | OrdRejReason | N | For optional use with `ExecType=8` (Rejected). See below |
+| `31` | LastPx | N | Price of this (last) fill. Required if `ExecType` (150) = `F` (Trade) |
+| `32` | LastQty | N | Quantity bought/sold on this (last) fill. Required if `ExecType` (150) = `F` (Trade) |
+| `381` | GrossTradeAmt | N | Last amount traded (quantity × price) expressed in units of counter currency. Required if `ExecType` (150) = `F` (Trade) |
+| `4015` | CumAmt | N | Total amount traded (quantity × price) expressed in units of counter currency |
+| `4016` | CumFee | N | Total fee expressed in units of `FeeCurrency` |
+| `4033` | LastFee | N | Last fee expressed in units of `FeeCurrency` |
+| `4034` | LastFeeCurrency | N | Currency of the fee |
+| `20030` | CancelOnDisconnect | N | Whether this order will be cancelled when this session disconnects, `Y` / `N` |
+| `20032` | DecisionStatus | N | The current decision-status of the order. See below |
+| `58` | Text | N | Human-readable detail |
+
+### ExecType (150)
+
+Describes the specific execution report — for example Pending Cancel — while
+`OrdStatus` (39) always identifies the current order status, for example
+Partially Filled.
+
+| Value | Meaning |
+| --- | --- |
+| `0` | New |
+| `3` | Done for day |
+| `4` | Canceled |
+| `5` | Replaced |
+| `6` | Pending Cancel (e.g. result of Order Cancel Request) |
+| `8` | Rejected |
+| `A` | Pending New |
+| `E` | Pending Replace (e.g. result of Order Cancel/Replace Request) |
+| `F` | Trade (partial fill or fill) |
+
+### OrdStatus (39)
+
+Describes the current state of the order, with the same scope as `OrderQty`,
+`CumQty`, `LeavesQty`, and `AvgPx`.
+
+| Value | Meaning |
+| --- | --- |
+| `0` | New |
+| `1` | Partially filled |
+| `2` | Filled |
+| `3` | Done for day |
+| `4` | Canceled |
+| `6` | Pending Cancel (i.e. result of Order Cancel Request) |
+| `8` | Rejected |
+| `A` | Pending New |
+| `E` | Pending Replace (i.e. result of Order Cancel/Replace Request) |
+
+<Warning>
+`ExecType` (150) and `OrdStatus` (39) answer different questions and routinely
+disagree in the same message. `150=F` says a fill just happened; whether the
+order is now `39=1` (Partially filled) or `39=2` (Filled) is a separate field.
+`150=6` (Pending Cancel) means the cancel was *received*, not that the order is
+dead — the order is still working and can still fill until an `ExecType=4`
+arrives.
+
+Drive your order state machine from `OrdStatus` and treat `ExecType` as the
+event label. Releasing reserved quantity or flattening a position on
+`ExecType=6`, or booking a fill's size from `OrderQty` rather than `LastQty`
+(32) and `CumQty` (14), are the two ways this goes wrong in production.
+</Warning>
+
+### LeavesQty (151)
+
+Quantity open for further execution. If `OrdStatus` (39) is `4` (Canceled), `3`
+(Done For Day), or `8` (Rejected) — in which case the order is no longer active —
+then `LeavesQty` could be `0`; otherwise `LeavesQty` = `OrderQty` (38) −
+`CumQty` (14).
+
+### OrdRejReason (103)
+
+For optional use with `ExecType=8` (Rejected).
+
+| Value | Meaning |
+| --- | --- |
+| `0` | Broker / Exchange option |
+| `1` | Unknown symbol |
+| `2` | Exchange closed |
+| `3` | Order exceeds limit |
+| `5` | Unknown order |
+| `6` | Duplicate Order (e.g. dupe `ClOrdID`) |
+| `7` | Duplicate of a verbally communicated order |
+| `8` | Stale order |
+
+### DecisionStatus (20032)
+
+The current decision-status of the order.
+
+| Value | Meaning |
+| --- | --- |
+| `A` | Active (default) |
+| `P` | Paused |
+| `U` | Pending Pause |
+| `R` | Pending Resume |
+| `W` | Waiting for StartTime |
+| `T` | Waiting for Trigger |
+
+Paused and staged orders can be edited and resumed from the Trillion Digital UI.
+The pending statuses are intermediate states.
+
+### Drop copy
+
+<Note>
+A session receives a full drop copy of **all** execution reports associated with
+the session user, including orders submitted from the UI or over another protocol
+such as the [WebSocket API](/trading-api/websocket/commands).
+</Note>
+
+<Warning>
+Drop copy means execution reports arrive carrying identifiers your session never
+issued, and `ClOrdID` (11) is optional on an `ExecutionReport`. A consumer that
+looks the report up by `ClOrdID` and raises on a miss will fall over the first
+time somebody touches the same account from the UI. Key your order book on
+`OrderID` (37), which is always present, and treat an unrecognised report as
+information about the account rather than an error.
+</Warning>
+
+<Note>
+`OrdType` (40) on an `ExecutionReport` is documented with `1` (Market) and `2`
+(Limit) only, although `A` (LimitAllIn) is accepted on `NewOrderSingle` and
+`OrderCancelReplaceRequest`. The specification does not state what an accepted
+LimitAllIn order reports back as — handle an unexpected `OrdType` value rather
+than assuming the set is closed.
+</Note>
+
+## OrderCancelReject (35=9)
+
+Rejects an invalid cancel or cancel/replace request.
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `11` | ClOrdID | Y | `ClOrdID` (11) which could not be cancelled/replaced |
+| `41` | OrigClOrdID | Y | `ClOrdID` of the previous accepted order |
+| `37` | OrderID | Y | Unique identifier of the most recent order as assigned by Trillion Digital. If `CxlRejReason` is "Unknown order", this will be `NONE` |
+| `60` | TransactTime | N | Business timestamp for this reject |
+| `39` | OrdStatus | Y | Identifies the current status of the order. See below |
+| `434` | CxlRejResponseTo | Y | Identifies the type of request the reject responds to. See below |
+| `102` | CxlRejReason | N | Code identifying the reason for the cancel rejection. See below |
+| `58` | Text | N | Human-readable detail |
+
+### OrdStatus (39) on a reject
+
+The reject enumerates a subset of the `ExecutionReport` values — `3` (Done for
+day) is not among them.
+
+| Value | Meaning |
+| --- | --- |
+| `0` | New |
+| `1` | Partially filled |
+| `2` | Filled |
+| `4` | Canceled |
+| `6` | Pending Cancel (i.e. result of Order Cancel Request) |
+| `8` | Rejected |
+| `A` | Pending New |
+| `E` | Pending Replace (i.e. result of Order Cancel/Replace Request) |
+
+### CxlRejResponseTo (434)
+
+| Value | Meaning |
+| --- | --- |
+| `1` | Order cancel request |
+| `2` | Order cancel/replace request |
+
+### CxlRejReason (102)
+
+| Value | Meaning |
+| --- | --- |
+| `0` | Too late to cancel |
+| `1` | Unknown order |
+| `2` | Broker / Exchange Option |
+| `3` | Order already in Pending Cancel or Pending Replace status |
+
+<Tip>
+`OrdStatus` (39) on a reject reports the live state of the order that could not
+be actioned, so a `CxlRejReason=0` (Too late to cancel) alongside `39=2`
+(Filled) is not an error to retry — the order filled while your cancel was in
+flight. Reconcile against the `OrdStatus` on the reject before resending
+anything.
+</Tip>
+
+Session establishment and signing are covered in
+[FIX logon](/trading-api/fix/session).

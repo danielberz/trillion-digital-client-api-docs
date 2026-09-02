@@ -1,0 +1,201 @@
+---
+title: "FIX market data"
+sidebarTitle: "Market data"
+description: "Subscribing to price or size levels over FIX 4.4 and reading the full-refresh snapshot."
+---
+
+After [logon](/trading-api/fix/session), the client sends a Market Data Request
+(`35=V`) to subscribe to market data snapshots. On subscription the client
+chooses whether aggregated prices are returned as **price levels** or as **size
+levels**. Trillion Digital then streams full snapshot updates as market prices
+change, as Market Data Snapshot Full Refresh (`35=W`). A subscription that cannot
+be served is answered with Market Data Request Reject (`35=Y`).
+
+Examples on this page use `^A` for the ASCII 01 delimiter.
+
+<Note>
+Only **full snapshots** are sent today. Every `35=W` carries the complete set of
+entries for the symbol; there is no incremental message. Market data delta
+updates will be supported in a future release.
+</Note>
+
+## Market Data Request (35=V)
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| — | `<MessageHeader>` | Y | `MsgType(35) = V` |
+| `262` | MDReqID | Y | Must be unique, or the ID of a previous Market Data Request to disable if `SubscriptionRequestType(263) = 2` (disable previous Snapshot + Updates request) |
+| `263` | SubscriptionRequestType | Y | `0` = Snapshot, `1` = Snapshot + Updates (Subscribe), `2` = Unsubscribe |
+| `264` | MarketDepth | N | Depth of market for book snapshot / incremental updates. `0` = full book depth, `1` = top of book, `2` and above = book depth (number of levels). Exactly one of tag `264` or tag `20020` must be specified |
+| `1070` | MDQuoteType | N | Type of liquidity to be included. `0` = Indicative, `1` = Tradeable (i.e. Firm) |
+| `20020` | NoSizeBucketsSegments | N | A list of sizes to return price levels for. Used to ask for prices of aggregated sizes. Exactly one of tag `264` or tag `20020` must be specified. Only supported with `MDUpdateType(265) = 0` (Full refresh) |
+| `→20021` | SizeBucket | Y | Identifies a single size bucket |
+| `→55` | Symbol | Y | The symbol of the currency pair to subscribe to, for example `BTC-USD` |
+| — | `<MessageTrailer>` | Y | Standard trailer |
+
+<Note>
+The specification lists `Symbol` (55) as a nested field but does not print the
+group count tag that introduces it. Its worked example sends `146 = 1`
+immediately followed by `55=ETH-USD`, and `267 = 2` followed by two `269` values
+selecting bid and offer. None of `146`, `267`, `269` or `265` appears as a row in
+the specification's `35=V` table, so their required flags on this message are
+undocumented — send them as the worked example does. Tag `146` is named
+`NoRelatedSym` and tag `269` `MDEntryType` elsewhere in the specification; tag
+`265` is referred to only as `MDUpdateType` in the note on `20020`, and tag `267`
+is never named.
+</Note>
+
+## Price levels or size levels
+
+The two aggregation modes are mutually exclusive and are selected by which tag
+you send.
+
+<Tabs>
+  <Tab title="Price levels — MarketDepth (264)">
+    `MarketDepth(264)` returns the book as price levels: `0` for full book depth,
+    `1` for top of book, or a count of levels from `2` upwards.
+
+    ```text Price levels
+    262=<MDReqID>^A263=1^A264=1^A1070=1^A146=1^A55=ETH-USD^A267=2^A269=0^A269=1^A
+    ```
+  </Tab>
+  <Tab title="Size levels — NoSizeBucketsSegments (20020)">
+    `NoSizeBucketsSegments(20020)` asks for the aggregated price of each size you
+    name, one `SizeBucket(20021)` per bucket. Use it when you price by clip size
+    rather than by book level — the response gives the price at which each size
+    can be done, so no client-side sweeping of levels is required.
+
+    ```text Size levels
+    262=<MDReqID>^A263=1^A265=0^A1070=1^A146=1^A55=ETH-USD^A267=2^A269=0^A269=1^A20020=4^A20021=1^A20021=2^A20021=5^A20021=10^A
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+Sending both `MarketDepth(264)` and `NoSizeBucketsSegments(20020)` is an error —
+and the specification's own worked example does exactly that, sending `264=0`
+alongside `20020=4`. Copy that example verbatim and the subscription is rejected
+with a `35=Y`. The session stays up and heartbeats normally, so the only symptom
+is a stream that never delivers a `35=W`; instrument your client to surface
+`35=Y` loudly rather than waiting for data that will not arrive.
+</Warning>
+
+<Warning>
+To unsubscribe, `263=2` must carry the `MDReqID` of the **original** request.
+Generating a fresh unique `MDReqID` for the unsubscribe disables nothing: the
+original subscription keeps streaming while you believe it stopped. Persist the
+`MDReqID` of every live subscription for the life of the session.
+</Warning>
+
+## Market Data Request Reject (35=Y)
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| — | `<MessageHeader>` | Y | `MsgType(35) = Y` |
+| `262` | MDReqID | Y | Refers to the MDReqID of the request |
+| `58` | Text | N | |
+| — | `<MessageTrailer>` | Y | Standard trailer |
+
+## Market Data Snapshot Full Refresh (35=W)
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| — | `<MessageHeader>` | Y | `MsgType(35) = W` |
+| `262` | MDReqID | Y | Refers to the MDReqID of the request |
+| `55` | Symbol | Y | Symbol updated by the Market Data Entry |
+| `268` | NoMDEntries | Y | Number of entries following |
+| `→269` | MDEntryType | Y | Type of market data entry. `0` = Bid, `1` = Offer. Required if `NoMDEntries(268) > 0` |
+| `→270` | MDEntryPx | Y | Price of the Market Data Entry |
+| `→271` | MDEntrySize | Y | Quantity represented by the Market Data Entry |
+| `→272` | MDEntryDate | Y | Date of Market Data Entry |
+| `→273` | MDEntryTime | Y | Time of Market Data Entry |
+| — | `<MessageTrailer>` | Y | Standard trailer |
+
+<Warning>
+Each `35=W` is a complete replacement, and no message ever deletes an entry.
+Merging entries into a book you keep between snapshots leaves stale prices and
+sizes resident forever, because nothing will ever retract them. Discard the
+previous state and rebuild from the `NoMDEntries(268)` group on every message.
+
+This also decides how to handle a sequence gap. A market data session is
+typically configured with FIX session level message recovery **disabled**, so
+missed messages are not retransmitted — which is harmless precisely because the
+next snapshot is authoritative on its own. Do not build recovery logic that
+assumes a resend.
+</Warning>
+
+<Note>
+The entry timestamp is split across two fields: `MDEntryDate(272)` carries the
+date and `MDEntryTime(273)` the time. Combine them to get the instant an entry
+was priced.
+</Note>
+
+<Tip>
+There is no level index or bucket identifier in the group. Entries are
+distinguished only by `MDEntryType(269)` and `MDEntrySize(271)`, so key your book
+on that pair when you subscribed with size buckets and rely on `269` plus
+ordering when you subscribed with `MarketDepth(264)`.
+</Tip>
+
+## Worked example
+
+A size-level subscription to `ETH-USD` for bids and offers at sizes 1, 2, 5 and
+10.
+
+```text Client → server
+8=FIX.4.4^A9=186^A35=V^A34=2^A49=CUSTOMER_MD^A52=20220930-13:28:06.146^A56=Trillion Digital^A262=id-220929160342682-26^A263=1^A264=0^A265=0^A1070=1^A146=1^A55=ETH-USD^A267=2^A269=0^A269=1^A20020=4^A20021=1^A20021=2^A20021=5^A20021=10^A10=226^A
+```
+
+| Tag | Field | Value |
+| --- | --- | --- |
+| `35` | MsgType | `V` — Market Data Request |
+| `49` | SenderCompID | `CUSTOMER_MD` |
+| `56` | TargetCompID | `Trillion Digital` |
+| `262` | MDReqID | `id-220929160342682-26` |
+| `263` | SubscriptionRequestType | `1` — Snapshot + Updates |
+| `264` | MarketDepth | `0` — full book depth |
+| `265` | MDUpdateType | `0` — full refresh |
+| `1070` | MDQuoteType | `1` — Tradeable |
+| `146` | NoRelatedSym | `1` |
+| `55` | Symbol | `ETH-USD` |
+| `267` | Not named in the specification | `2` — count of the `269` values that follow |
+| `269` | MDEntryType | `0` bid, then `1` offer |
+| `20020` | NoSizeBucketsSegments | `4` |
+| `20021` | SizeBucket | `1`, `2`, `5`, `10` |
+
+<Note>
+Reproduced verbatim from the specification, including the `264=0` and `20020=4`
+combination it states elsewhere is an error. Drop `264` and the rest is a sound
+template for a size-level subscription.
+</Note>
+
+The response returns one entry per side per requested bucket — two sides times
+four buckets, so `268=8`.
+
+```text Server → client
+8=FIX.4.4^A9=608^A35=W^A34=2^A49=Trillion Digital^A52=20220930-13:28:06.454^A56=CUSTOMER_MD^A55=ETH-USD^A262=id-220929160342682-26^A268=8^A269=0^A270=1320.43^A271=1.00000000^A272=20220930^A273=13:28:06.401^A269=0^A270=1320.43^A271=2.00000000^A272=20220930^A273=13:28:06.401^A269=0^A270=1320.43^A271=5.00000000^A272=20220930^A273=13:28:06.401^A269=0^A270=1320.43^A271=10.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=1.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=2.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=5.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=10.00000000^A272=20220930^A273=13:28:06.401^A10=247^A
+```
+
+Decoded, the eight entries are:
+
+| `269` | `270` MDEntryPx | `271` MDEntrySize | `272` MDEntryDate | `273` MDEntryTime |
+| --- | --- | --- | --- | --- |
+| `0` Bid | `1320.43` | `1.00000000` | `20220930` | `13:28:06.401` |
+| `0` Bid | `1320.43` | `2.00000000` | `20220930` | `13:28:06.401` |
+| `0` Bid | `1320.43` | `5.00000000` | `20220930` | `13:28:06.401` |
+| `0` Bid | `1320.43` | `10.00000000` | `20220930` | `13:28:06.401` |
+| `1` Offer | `1323.42` | `1.00000000` | `20220930` | `13:28:06.401` |
+| `1` Offer | `1323.42` | `2.00000000` | `20220930` | `13:28:06.401` |
+| `1` Offer | `1323.42` | `5.00000000` | `20220930` | `13:28:06.401` |
+| `1` Offer | `1323.42` | `10.00000000` | `20220930` | `13:28:06.401` |
+
+`MDEntrySize(271)` echoes the requested `SizeBucket(20021)` and `MDEntryPx(270)`
+is the aggregated price for that size, which is what makes the bucket form
+directly usable for pricing a clip.
+
+<Note>
+The equivalent on the WebSocket API is the
+[`MarketDataSnapshot`](/trading-api/websocket/streams/market-data-snapshot)
+stream, which offers the same price-level and size-bucket choice plus throttling.
+Order entry messages are covered in [FIX messages](/trading-api/fix/orders).
+</Note>

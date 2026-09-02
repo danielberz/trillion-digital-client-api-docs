@@ -18,7 +18,7 @@ to integrate with it programmatically.
     Real-time market data, RFQ, order execution, and balances over WebSocket,
     REST, and FIX. This is the API available today.
   </Card>
-  <Card title="Client API" icon="code" href="/client-api/overview">
+  <Card title="Platform API" icon="code" href="/platform-api/overview">
     Our first-party REST API for accounts, settlement, and reporting.
     Currently in design — the contract is published for review.
   </Card>
@@ -26,6 +26,14 @@ to integrate with it programmatically.
     Platform and API changes, newest first.
   </Card>
 </CardGroup>
+
+<Note>
+Two APIs, and most integrations use both. The **Trading API** covers the moment
+of the trade — prices, quotes, orders, fills. The **Platform API** covers
+everything around it — settlement instructions, whitelisting, transfers, and
+reporting. If you are not sure which you need, start at
+[Which API do I need?](/choosing-an-api).
+</Note>
 
 ## Choosing an integration path
 
@@ -42,7 +50,7 @@ to integrate with it programmatically.
   </Step>
   <Step title="Reconcile and report">
     Trade, balance, and settlement history are available over both the Trading
-    API and, once released, the [Client API](/client-api/overview).
+    API and, once released, the [Platform API](/platform-api/overview).
   </Step>
 </Steps>
 

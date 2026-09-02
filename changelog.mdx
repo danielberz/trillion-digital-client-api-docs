@@ -3,6 +3,52 @@ title: "Changelog"
 description: "Platform and API changes, newest first."
 ---
 
+<Update label="2026-09-02" description="Complete FIX reference; Client API renamed">
+
+## Full FIX 2.50 reference
+
+The FIX section now documents the complete specification rather than a summary.
+New pages for [session-level messages](/trading-api/fix/session) including the
+exact logon signature construction, [market data](/trading-api/fix/market-data),
+[orders](/trading-api/fix/orders), [security list](/trading-api/fix/security-list),
+[order strategies](/trading-api/fix/strategies),
+[state change matrices](/trading-api/fix/state-matrices), and
+[worked example messages](/trading-api/fix/examples).
+
+Notable behaviour that was previously undocumented:
+
+- **Cancel on Disconnect** is on by default and is **per session** — it does not
+  touch orders placed through the UI, the WebSocket API, or another FIX session.
+  Override per order with `CancelOnDisconnect` (20030) = `N`.
+- **Drop copy** means your session receives execution reports for orders it never
+  submitted, carrying `ClOrdID` values your engine has not issued.
+- Market data **delta updates** and **strategy/algo parameters over FIX** are both
+  future releases. Every update today is a full snapshot, and orders route with
+  the default strategy regardless of what you send.
+
+## WebSocket reference corrections
+
+- The [`Security`](/trading-api/websocket/streams/security) and
+  [`Currency`](/trading-api/websocket/streams/currency) streams are
+  **delta after the initial snapshot**, not a full set on every message. Merge,
+  do not replace.
+- [`CurrencyConversion`](/trading-api/websocket/streams/currency#currencyconversion)
+  is fully documented, including its `Throttle` and `Tolerance` parameters — the
+  stream is deliberately lazy and its rates are not live prices.
+- New page: [WebSocket order strategies](/trading-api/websocket/order-strategies)
+  covering SteadyPace and StopLimit parameters.
+
+## Client API renamed to Platform API
+
+"Trading API" and "Client API" did not describe the split — both are for clients.
+The second API is now the **[Platform API](/platform-api/overview)**: accounts,
+settlement instructions, wallet addresses, transfers, and reporting. Everything
+around the trade, where the Trading API covers the trade itself.
+
+New page: [Which API do I need?](/choosing-an-api).
+
+</Update>
+
 <Update label="2026-09-02" description="Documentation launch">
 
 ## Documentation site launched
@@ -40,7 +86,7 @@ resubscription, and half-open detection.
 **Knowledge Center** — onboarding, entities, trading, settlement, whitelisting,
 and compliance guides.
 
-**Client API** — the design contract for our first-party REST API, published for
+**Platform API** — the design contract for our first-party REST API, published for
 review before implementation.
 
 <Note>

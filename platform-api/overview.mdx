@@ -1,5 +1,5 @@
 ---
-title: "Client API"
+title: "Platform API"
 sidebarTitle: "Overview"
 description: "Trillion Digital's first-party REST API — conventions and design."
 ---
@@ -12,29 +12,47 @@ semantics may change. Nothing on this page can be called today.
 For a working integration, use the [Trading API](/trading-api/overview).
 </Warning>
 
-The Client API is a first-party REST interface covering accounts, settlement,
+The Platform API is a first-party REST interface covering accounts, settlement,
 reporting, and reference data — the operational surface around trading, rather
 than trading itself.
 
-## Why it exists
+## What it covers
 
-The [Trading API](/trading-api/overview) is WebSocket-first, which is right for
-execution and market data but awkward for everything else. Reconciliation jobs,
-reporting pipelines, and treasury tooling want plain request/response semantics,
-a machine-readable contract, and stable versioning.
+The [Trading API](/trading-api/overview) covers the moment of the trade. This one
+covers everything before and after it.
+
+| Domain | Resources |
+| --- | --- |
+| **Accounts** | Accounts, entities, users, API keys and their scopes |
+| **Settlement instructions** | Registering, updating, and archiving bank details per currency and rail |
+| **Wallet addresses** | Whitelisting, screening status, asset and network bindings |
+| **Transfers** | Instructing deposits and withdrawals, and tracking them to completion |
+| **Reporting** | Trade, balance, and transaction history; statements; exports |
+| **Compliance state** | Onboarding status, review requirements, document requests |
 
 <Note>
 This API is **complementary**, not a replacement. Execution stays on the Trading
-API, where streaming is the correct model. Use this for account state,
-settlement, and reporting.
+API, where streaming is the correct model. Unsure which you need? See
+[Which API do I need?](/choosing-an-api).
 </Note>
+
+## Why it exists separately
+
+The Trading API is WebSocket-first and HMAC-signed, which is right for order flow
+and awkward for everything else. Registering a bank account or exporting last
+month's trades is ordinary request/response work, and forcing it through a
+streaming, per-message-signed transport adds cost without adding safety.
+
+Splitting it also lets this API offer what reconciliation actually needs and a
+streaming API cannot easily provide: idempotency keys, cursor pagination, dated
+versioning, and a machine-readable contract.
 
 ## Making requests
 
 ### Authentication
 
 All requests carry an API key in the `Authorization` header. See
-[Authentication](/client-api/authentication).
+[Authentication](/platform-api/authentication).
 
 ```bash
 curl -H "Authorization: Bearer tdk_test_..." https://api.trilliondigital.io/accounts
@@ -57,7 +75,7 @@ All resources follow standard REST patterns.
 
 ### Versioning
 
-Date-based, pinned per request. See [Versioning](/client-api/versioning).
+Date-based, pinned per request. See [Versioning](/platform-api/versioning).
 
 ```bash
 curl -H "Trillion-Version: 2026-09-01" ...
@@ -66,7 +84,7 @@ curl -H "Trillion-Version: 2026-09-01" ...
 ### Idempotency
 
 `POST` and `PATCH` accept an idempotency key so retries are safe. See
-[Idempotency](/client-api/idempotency).
+[Idempotency](/platform-api/idempotency).
 
 ### Request IDs
 
@@ -94,12 +112,12 @@ Trillion-Request-Id: req_01k9m2p7q3r4s5t6v7w8x9y0z1
 
 ### Pagination
 
-Cursor-based on all list endpoints. See [Pagination](/client-api/pagination).
+Cursor-based on all list endpoints. See [Pagination](/platform-api/pagination).
 
 ### Errors
 
 Structured JSON with a stable machine-readable code. See
-[Errors](/client-api/errors).
+[Errors](/platform-api/errors).
 
 ## Working with data
 

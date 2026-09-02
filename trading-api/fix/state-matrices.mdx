@@ -1,0 +1,143 @@
+---
+title: "Order state change matrices"
+sidebarTitle: "State matrices"
+description: "The exact ExecutionReport sequences for filled, cancelled, and replaced orders."
+---
+
+These matrices are the definitive answer to what your state machine should do.
+Each one walks a single order from submission to a terminal state, showing every
+message on the wire in order and the values that arrive with it.
+
+## Reading the matrices
+
+The **Request** and **Response** columns name the message and, in brackets, its
+`(ClOrdID, OrigClOrdID)`. `NewOrderSingle(A)` carries `ClOrdID` A;
+`ExecutionReport(B,A)` carries `ClOrdID` B and `OrigClOrdID` A; `ExecutionReport(B)`
+carries `ClOrdID` B alone.
+
+The **Time** column is a step index, not a clock. Where two rows share the same
+index they are alternative branches — one or the other occurs, never both.
+
+<Note>
+`ExecType` (150) and `OrdStatus` (39) are shown by name. The wire carries the
+single-character codes listed on the
+[ExecutionReport](/trading-api/fix/orders) — `ExecType` describes the specific
+report, `OrdStatus` always identifies the current order status.
+</Note>
+
+The quantity columns follow one invariant, stated by the `LeavesQty` (151)
+definition: if `OrdStatus` is `4` (Canceled), `3` (Done For Day) or `8`
+(Rejected), the order is no longer active and `LeavesQty` could be `0`;
+otherwise `LeavesQty` = `OrderQty` (38) − `CumQty` (14). Compute against that
+rule rather than trusting a single report in isolation.
+
+<Warning>
+`PendingNew` is not an acceptance. Both branches at time 3 in the first two
+matrices follow the same `PendingNew` report — the order either becomes `New` or
+is `Rejected`, with no way to tell from the `PendingNew` message which is coming.
+Firms that treat the `PendingNew` acknowledgement as working and release a hedge
+or downstream leg off it will fire on orders the venue never accepted.
+</Warning>
+
+## Filled order
+
+The base case: an order acknowledged, worked, and filled across three
+executions.
+
+| Time | Request | Response | ExecType | OrdStatus | OrderQty | CumQty | LeavesQty | LastQty | Comment |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `NewOrderSingle(A)` | | | | 10 | | | | |
+| 2 | | `ExecutionReport(A)` | PendingNew | PendingNew | 10 | 0 | 10 | | |
+| 3 | | `ExecutionReport(A)` | Rejected | Rejected | 10 | 0 | 10 | | If order is rejected |
+| 3 | | `ExecutionReport(A)` | New | New | 10 | 0 | 10 | | |
+| 4 | | `ExecutionReport(A)` | Trade | PartiallyFilled | 10 | 2 | 8 | 2 | |
+| 5 | | `ExecutionReport(A)` | Trade | PartiallyFilled | 10 | 3 | 7 | 1 | |
+| 6 | | `ExecutionReport(A)` | Trade | Filled | 10 | 10 | 0 | 7 | |
+
+## Canceled order
+
+A cancel request introduces a second `ClOrdID` and two separate points at which
+the cancel can be refused.
+
+| Time | Request | Response | ExecType | OrdStatus | OrderQty | CumQty | LeavesQty | LastQty | Comment |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `NewOrderSingle(A)` | | | | 10 | | | | |
+| 2 | | `ExecutionReport(A)` | PendingNew | PendingNew | 10 | 0 | 10 | | |
+| 3 | | `ExecutionReport(A)` | Rejected | Rejected | 10 | 0 | 10 | | If order is rejected |
+| 3 | | `ExecutionReport(A)` | New | New | 10 | 0 | 10 | | |
+| 4 | `OrderCancelRequest(B,A)` | | | | | | | | |
+| 5 | | `OrderCancelRejected(B,A)` | | New | 10 | 0 | 10 | | If cancel is rejected |
+| 5 | | `ExecutionReport(B,A)` | PendingCancel | PendingCancel | 10 | 0 | 10 | | |
+| 6 | | `OrderCancelRejected(B,A)` | | New | 10 | 0 | 10 | | If cancel is rejected |
+| 7 | | `ExecutionReport(B,A)` | Canceled | Canceled | 10 | 0 | 0 | | |
+
+<Warning>
+The rejection rows carry **no `ExecType`** — `OrderCancelRejected` is a different
+message type and does not carry tag 150 at all. Handlers that switch on
+`ExecType` for every inbound message will drop the reject on the floor and leave
+the order stuck in `PendingCancel` forever, while it is still live and fillable.
+
+Note also that the reject can arrive at time 5 (before any `PendingCancel`) or at
+time 6 (after it), and in both cases `OrdStatus` reverts to `New`. `PendingCancel`
+is not a terminal state and your machine must be able to transition back out of it.
+</Warning>
+
+## Replace to increase quantity
+
+A cancel/replace follows the same two-rejection shape as a cancel, then reports
+the amended order under the new `ClOrdID`.
+
+| Time | Request | Response | ExecType | OrdStatus | OrderQty | CumQty | LeavesQty | LastQty | Comment |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `NewOrderSingle(A)` | | | | 10 | | | | |
+| 2 | | `ExecutionReport(A)` | PendingNew | PendingNew | 10 | 0 | 10 | | |
+| 3 | | `ExecutionReport(A)` | New | New | 10 | 0 | 10 | | |
+| 4 | `OrderCancel/ReplaceRequest(B,A)` | | | | 11 | | | | |
+| 5 | | `OrderCancelRejected(B,A)` | | New | 10 | 0 | 10 | | If replace is rejected |
+| 5 | | `ExecutionReport(B,A)` | PendingReplace | PendingReplace | 10 | 0 | 10 | | |
+| 6 | | `OrderCancelRejected(B,A)` | | New | 10 | 0 | 10 | | If replace is rejected |
+| 6 | | `ExecutionReport(B,A)` | Replaced | New | 11 | 0 | 0 | | |
+| 7 | | `ExecutionReport(B)` | Trade | PartiallyFilled | 11 | 1 | 10 | 1 | |
+
+<Note>
+The report that confirms the replace pairs `ExecType` `Replaced` with `OrdStatus`
+`New`, not `Replaced`. This is the reason to drive the state machine from
+`OrdStatus` and use `ExecType` only to recognise what the report is about. From
+time 7 onwards the order is addressed by the new `ClOrdID` alone.
+</Note>
+
+## Replace during fill
+
+Nothing stops the order trading while a replace is in flight. This matrix is the
+one that catches integrators out.
+
+| Time | Request | Response | ExecType | OrdStatus | OrderQty | CumQty | LeavesQty | LastQty | Comment |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `NewOrderSingle(A)` | | | | 10 | | | | |
+| 2 | | `ExecutionReport(A)` | PendingNew | PendingNew | 10 | 0 | 10 | | |
+| 3 | | `ExecutionReport(A)` | New | New | 10 | 0 | 10 | | |
+| 4 | `OrderCancel/ReplaceRequest(B,A)` | | | | 8 | | | | |
+| 5 | | `ExecutionReport(A)` | Trade | PartiallyFilled | 10 | 1 | 9 | 1 | Fill before replace is received |
+| 6 | | `ExecutionReport(B,A)` | PendingReplace | PendingReplace | 10 | 1 | 9 | | |
+| 7 | | `ExecutionReport(A)` | Trade | PendingReplace | 10 | 3 | 7 | 2 | Fill before replace is processed |
+| 8 | | `ExecutionReport(B,A)` | Replaced | New | 8 | 3 | 5 | | |
+| 9 | | `ExecutionReport(B)` | Trade | Filled | 8 | 8 | 0 | 5 | |
+
+<Warning>
+Two things bite here, both on the fill at time 7.
+
+First, it is a `Trade` with `OrdStatus` `PendingReplace` — not `PartiallyFilled`.
+Booking fills only when `OrdStatus` is `PartiallyFilled` or `Filled` silently
+loses this execution and leaves your position two units short of the venue's.
+Book on `ExecType` `Trade` and take the quantity from `LastQty`.
+
+Second, both in-flight fills are reported against `ClOrdID` **A**, the original
+order, even after you have sent B. A book keyed on the new `ClOrdID` from the
+moment the replace is submitted will not match them to anything. Keep the old ID
+resolvable until the `Replaced` report at time 8 arrives.
+</Warning>
+
+The replaced order also demonstrates why a reduction has to be validated against
+`CumQty` rather than `OrderQty`: the replace to 8 is accepted with 3 already
+filled, leaving 5 working. A replace below the quantity already executed has no
+working remainder to apply to.

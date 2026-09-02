@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Trillion Digital",
-  "description": "Documentation for the Trillion Digital OTC trading platform — knowledge center, Trading API, and Client API.",
+  "description": "Documentation for the Trillion Digital OTC trading platform — knowledge center, Trading API, and Platform API.",
   "colors": {
     "primary": "#000000",
     "light": "#FFFFFF",
@@ -21,7 +21,12 @@
         "groups": [
           {
             "group": "Get started",
-            "pages": ["index", "guides/overview", "guides/getting-started"]
+            "pages": [
+              "index",
+              "choosing-an-api",
+              "guides/overview",
+              "guides/getting-started"
+            ]
           },
           {
             "group": "Accounts",
@@ -52,11 +57,17 @@
           },
           {
             "group": "Compliance & security",
-            "pages": ["guides/compliance/kyc-kyb", "guides/compliance/security"]
+            "pages": [
+              "guides/compliance/kyc-kyb",
+              "guides/compliance/security"
+            ]
           },
           {
             "group": "Support",
-            "pages": ["guides/support/contact", "guides/support/faq"]
+            "pages": [
+              "guides/support/contact",
+              "guides/support/faq"
+            ]
           }
         ]
       },
@@ -85,6 +96,7 @@
               "trading-api/websocket/overview",
               "trading-api/websocket/subscriptions",
               "trading-api/websocket/commands",
+              "trading-api/websocket/order-strategies",
               {
                 "group": "Streams",
                 "pages": [
@@ -102,14 +114,22 @@
           },
           {
             "group": "REST API",
-            "pages": ["trading-api/rest/overview", "trading-api/rest/endpoints"]
+            "pages": [
+              "trading-api/rest/overview",
+              "trading-api/rest/endpoints"
+            ]
           },
           {
             "group": "FIX API",
             "pages": [
               "trading-api/fix/overview",
-              "trading-api/fix/logon",
-              "trading-api/fix/messages"
+              "trading-api/fix/session",
+              "trading-api/fix/market-data",
+              "trading-api/fix/orders",
+              "trading-api/fix/security-list",
+              "trading-api/fix/strategies",
+              "trading-api/fix/state-matrices",
+              "trading-api/fix/examples"
             ]
           },
           {
@@ -123,17 +143,22 @@
         ]
       },
       {
-        "tab": "Client API",
+        "tab": "Platform API",
         "groups": [
           {
             "group": "Introduction",
             "pages": [
-              "client-api/overview",
-              "client-api/authentication",
-              "client-api/versioning",
-              "client-api/idempotency",
-              "client-api/pagination",
-              "client-api/errors"
+              "platform-api/overview"
+            ]
+          },
+          {
+            "group": "Conventions",
+            "pages": [
+              "platform-api/authentication",
+              "platform-api/versioning",
+              "platform-api/idempotency",
+              "platform-api/pagination",
+              "platform-api/errors"
             ]
           }
         ]
@@ -143,7 +168,9 @@
         "groups": [
           {
             "group": "Changelog",
-            "pages": ["changelog"]
+            "pages": [
+              "changelog"
+            ]
           }
         ]
       }
@@ -167,7 +194,15 @@
     }
   },
   "contextual": {
-    "options": ["copy", "view", "chatgpt", "claude", "mcp", "cursor", "vscode"]
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {

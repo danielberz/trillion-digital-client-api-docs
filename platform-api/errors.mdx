@@ -5,7 +5,7 @@ description: "Structured error responses and how to act on them."
 
 <Warning>
 This API is in design and not yet available. See
-[Overview](/client-api/overview).
+[Overview](/platform-api/overview).
 </Warning>
 
 Errors return a structured JSON body with a stable, machine-readable code.
@@ -17,7 +17,7 @@ Errors return a structured JSON body with a stable, machine-readable code.
     "code": "PARAMETER_INVALID",
     "message": "settlement_currency must be a supported ISO 4217 code.",
     "param": "settlement_currency",
-    "doc_url": "https://docs.trilliondigital.io/client-api/errors#parameter_invalid",
+    "doc_url": "https://docs.trilliondigital.io/platform-api/errors#parameter_invalid",
     "request_id": "req_01k9m2p7q3r4s5t6v7w8x9y0z1"
   }
 }
@@ -57,7 +57,7 @@ Errors return a structured JSON body with a stable, machine-readable code.
 | --- | --- |
 | `PARAMETER_MISSING` | A required parameter was absent |
 | `PARAMETER_INVALID` | A parameter failed validation |
-| `IDEMPOTENCY_KEY_REUSED` | Same key, different body — see [Idempotency](/client-api/idempotency) |
+| `IDEMPOTENCY_KEY_REUSED` | Same key, different body — see [Idempotency](/platform-api/idempotency) |
 | `RESOURCE_ARCHIVED` | The resource exists but is archived |
 | `INSUFFICIENT_FUNDS` | Available balance too low |
 | `DESTINATION_NOT_APPROVED` | Settlement destination not registered or screened |

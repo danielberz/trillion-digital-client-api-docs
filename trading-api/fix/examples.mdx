@@ -1,0 +1,276 @@
+---
+title: "FIX examples"
+sidebarTitle: "Examples"
+description: "Verbatim FIX 4.4 wire samples for logon, security list, orders, and market data."
+---
+
+Every sample below is reproduced exactly as published in the Trillion Digital FIX
+specification 2.50. `^A` denotes the **ASCII 01** (SOH) field delimiter.
+
+Diff your encoder output against these byte for byte. `BodyLength` (9) and
+`CheckSum` (10) are computed over the exact bytes of each sample and will not
+match a message in which you have substituted your own IDs, symbols, or
+timestamps.
+
+In every decode table, **Req** is the specification's `Req'd` flag for that
+message. `—` marks a tag that appears in the sample but is not listed in that
+message's field table.
+
+<Note>
+The order samples use `SenderCompID` `CUSTOMER`; the market data samples use
+`CUSTOMER_MD`. A typical Trillion Digital setup is two sessions — one for market
+data with session level recovery disabled, one for order submission with
+recovery enabled.
+</Note>
+
+## Standard header and trailer
+
+These tags frame every sample on this page and are not repeated in the
+per-message tables below.
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `8` | BeginString | Y | `FIX.4.4`. Must be the first field in the message |
+| `9` | BodyLength | Y | Must be the second field in the message |
+| `35` | MsgType | Y | Must be the third field in the message |
+| `49` | SenderCompID | Y | Provided by Trillion Digital during onboarding |
+| `56` | TargetCompID | Y | Provided by Trillion Digital during onboarding |
+| `34` | MsgSeqNum | Y | |
+| `52` | SendingTime | Y | |
+| `10` | CheckSum | Y | Three byte, simple checksum |
+
+## Login
+
+### Logon
+
+```text Client → Trillion Digital
+8=FIX.4.4^A9=143^A35=A^A34=1^A49=CUSTOMER^A52=20220915-18:29:58.756^A56=Trillion Digital^A95=44^A96=ZduZiNxyxS7_4UPDesOryd9KVEecg9LAqqTRR79Pp20=^A98=0^A108=300000^A141=Y^A554=Daniel^A10=248^A
+```
+
+| Tag | Field | Req | Value |
+| --- | --- | --- | --- |
+| `35` | MsgType | Y | `A` — Logon |
+| `96` | RawData | Y | `ZduZiNxyxS7_4UPDesOryd9KVEecg9LAqqTRR79Pp20=` — the signature over `52`, `34`, `49`, `56` |
+| `108` | HeartBtInt | Y | `300000` — same value used by both sides |
+| `141` | ResetSeqNumFlag | N | `Y` — both sides reset sequence numbers |
+| `554` | Password | Y | `Daniel` — the API key for the customer user |
+
+Tags `95` and `98` appear in the sample but are not listed in the Logon field
+table of the specification. See [FIX logon](/trading-api/fix/session) for the
+signature construction that produces `96`.
+
+### Logon Response
+
+```text Trillion Digital → client
+8=FIX.4.4^A9=78^A35=A^A34=1^A49=Trillion Digital^A52=20220915-18:29:58.765^A56=CUSTOMER^A98=0^A108=300000^A141=Y^A10=255^A
+```
+
+| Tag | Field | Req | Value |
+| --- | --- | --- | --- |
+| `35` | MsgType | Y | `A` — Logon, session accepted |
+| `34` | MsgSeqNum | Y | `1` — reset, because `141=Y` |
+| `108` | HeartBtInt | Y | `300000` — echoed unchanged |
+| `141` | ResetSeqNumFlag | N | `Y` |
+
+<Warning>
+The acceptor's Logon carries **no** `RawData` (96) and **no** `Password` (554).
+Authentication is one-directional: an initiator that waits for a countersignature,
+or that treats the absent `96` as a malformed Logon, will hang on every session
+start rather than proceeding to application messages.
+
+Note also that `34=1` on both sides is the correct result of `141=Y`, not a
+sequence gap. Issuing a ResendRequest against it will stall the session.
+</Warning>
+
+## Security List
+
+### SecurityList Request
+
+```text Client → Trillion Digital
+8=FIX.4.4^A9=88^A35=x^A34=3^A49=CUSTOMER^A52=20220930-13:28:16.451^A56=Trillion Digital^A320=id-220929160342682-27^A559=4^A10=156^A
+```
+
+| Tag | Field | Req | Value |
+| --- | --- | --- | --- |
+| `35` | MsgType | Y | `x` — Security List Request |
+| `320` | SecurityReqID | Y | `id-220929160342682-27` — unique ID identifying this request |
+| `559` | SecurityListRequestType | Y | `4` — ALL_SECURITIES |
+
+### SecurityList Response
+
+```text Trillion Digital → client
+8=FIX.4.4^A9=243^A35=y^A34=3^A49=Trillion Digital^A52=20220930-13:28:16.514^A56=CUSTOMER^A146=2^A55=ETH-USD^A48=2^A561=0.00000001^A562=0.00000001^A969=0.00001^A1140=1000.00^A55=BTC-USD^A48=24^A561=0.00000001^A562=0^A969=0.01^A1140=1000.00^A320=id-220929160342682-27^A322=1BQM22QR01G00^A560=0^A10=153^A
+```
+
+| Tag | Field | Req | Value |
+| --- | --- | --- | --- |
+| `35` | MsgType | Y | `y` — Security List |
+| `146` | NoRelatedSym | — | `2` — two `Instrument` blocks follow |
+| → `55` | Symbol | Y | `ETH-USD`, then `BTC-USD` |
+| → `48` | SecurityID | Y | `2`, then `24` — internal Trillion Digital ID, for information only |
+| → `561` | RoundLot | Y | `0.00000001` on both — trading lot size |
+| → `562` | MinTradeVol | Y | `0.00000001` for ETH-USD, `0` for BTC-USD |
+| → `969` | MinPriceIncrement | Y | `0.00001` for ETH-USD, `0.01` for BTC-USD |
+| → `1140` | MaxTradeVol | Y | `1000.00` on both — maximum size for an order |
+| `320` | SecurityReqID | Y | Echoes the request's `320` |
+| `322` | SecurityResponseID | Y | `1BQM22QR01G00` — identifier for this SecurityList message |
+| `560` | SecurityRequestResult | Y | `0` — Valid Request |
+
+<Note>
+The `Instrument` group is on the wire **before** `SecurityReqID` (320),
+`SecurityResponseID` (322) and `SecurityRequestResult` (560), and has no
+terminator other than the next `55`. The group is required only when `560=0`.
+Responses that require fragmentation carry `TotalNoRelatedSym` (393) and
+`LastFragment` (893), so a client that assumes one message per request will
+truncate the universe it can trade.
+</Note>
+
+<Tip>
+`MinPriceIncrement` (969) and `MinTradeVol` (562) differ per symbol and are the
+values your order validation must use. Note `562=0` on BTC-USD in this sample —
+hardcoding the ETH-USD value across symbols is the usual cause of avoidable
+rejections.
+</Tip>
+
+## Orders
+
+### NewOrderSingle
+
+```text Client → Trillion Digital
+8=FIX.4.4^A9=147^A35=D^A34=2^A49=CUSTOMER^A52=20220915-18:30:01.335^A56=Trillion Digital^A11=id-220912164936074-1152^A38=1^A40=2^A44=1630.123^A54=2^A55=ETH-USD^A59=1^A60=20220915-14:30:01^A10=228^A
+```
+
+| Tag | Field | Req | Value |
+| --- | --- | --- | --- |
+| `35` | MsgType | Y | `D` — New Order Single |
+| `11` | ClOrdID | Y | `id-220912164936074-1152` — client-assigned, ≤ 36 characters, UUIDs recommended |
+| `38` | OrderQty | Y | `1` — size of the order |
+| `40` | OrdType | Y | `2` — Limit (`1` Market, `A` LimitAllIn) |
+| `44` | Price | N | `1630.123` — required for limit orders |
+| `54` | Side | Y | `2` — Sell (`1` Buy) |
+| `55` | Symbol | Y | `ETH-USD` |
+| `59` | TimeInForce | Y | `1` — Good Till Cancel (`3` IOC, `4` FOK) |
+| `60` | TransactTime | Y | `20220915-14:30:01` — business timestamp, second precision |
+
+<Note>
+`TransactTime` (60) here carries second precision while `SendingTime` (52) carries
+milliseconds. The API accepts second, millisecond, or microsecond precision in the
+format `YYYYddmm-HH:MM:SS.ffffff` and always sends millisecond precision.
+</Note>
+
+### ExecutionReport (Reject)
+
+```text Trillion Digital → client
+8=FIX.4.4^A9=366^A35=8^A34=2^A49=Trillion Digital^A52=20220915-18:30:01.393^A56=CUSTOMER^A1=default^A6=0^A11=id-220912164936074-1152^A14=0^A17=ba22dbe1-cb33-4fcb-9613-921006afdebd^A37=94869628-b862-43e4-bd2d-be85e4295bd4^A38=1.00000000^A39=8^A40=2^A44=1630.123^A54=2^A55=ETH-USD^A58=Unable to submit market order - please try again later.^A59=1^A60=20220915-14:30:01.000^A103=0^A150=8^A151=1.00000000^A20030=N^A20032=A^A10=205^A
+```
+
+| Tag | Field | Req | Value |
+| --- | --- | --- | --- |
+| `35` | MsgType | Y | `8` — Execution Report |
+| `1` | Account | — | `default` |
+| `6` | AvgPx | Y | `0` — no fills |
+| `11` | ClOrdID | N | Echoes the `NewOrderSingle` `11` |
+| `14` | CumQty | Y | `0` |
+| `17` | ExecID | Y | `ba22dbe1-cb33-4fcb-9613-921006afdebd` |
+| `37` | OrderID | Y | `94869628-b862-43e4-bd2d-be85e4295bd4` — assigned by Trillion Digital |
+| `38` | OrderQty | Y | `1.00000000` |
+| `39` | OrdStatus | Y | `8` — Rejected |
+| `40` | OrdType | Y | `2` — Limit |
+| `44` | Price | N | `1630.123` |
+| `54` | Side | Y | `2` — Sell |
+| `55` | Symbol | Y | `ETH-USD` |
+| `58` | Text | N | `Unable to submit market order - please try again later.` |
+| `59` | TimeInForce | Y | `1` — Good Till Cancel |
+| `60` | TransactTime | N | `20220915-14:30:01.000` |
+| `103` | OrdRejReason | N | `0` — Broker / Exchange option |
+| `150` | ExecType | Y | `8` — Rejected |
+| `151` | LeavesQty | Y | `1.00000000` |
+| `20030` | CancelOnDisconnect | N | `N` |
+| `20032` | DecisionStatus | N | `A` — Active |
+
+<Warning>
+`LeavesQty` (151) is `1.00000000` on a message whose `OrdStatus` (39) is `8`
+(Rejected). The specification permits `LeavesQty` to be `0` when `OrdStatus` is
+`4`, `3` or `8`, but does not require it — as this sample shows. A state machine
+that treats a non-zero `LeavesQty` as "still working" will leave rejected orders
+open forever and will double-count exposure on the next order.
+
+Drive terminal state from `OrdStatus` (39) alone. `ExecType` (150) describes the
+event that just occurred, not the resulting state.
+</Warning>
+
+<Note>
+`Text` (58) is free-form, contains spaces, and is not machine-parseable — the
+sample's wording refers to a market order although `OrdType` (40) is `2` (Limit).
+Branch on `OrdRejReason` (103), never on `Text`.
+</Note>
+
+## Market Data
+
+### MarketDataSnapshot Request
+
+```text Client → Trillion Digital
+8=FIX.4.4^A9=186^A35=V^A34=2^A49=CUSTOMER_MD^A52=20220930-13:28:06.146^A56=Trillion Digital^A262=id-220929160342682-26^A263=1^A264=0^A265=0^A1070=1^A146=1^A55=ETH-USD^A267=2^A269=0^A269=1^A20020=4^A20021=1^A20021=2^A20021=5^A20021=10^A10=226^A
+```
+
+| Tag | Field | Req | Value |
+| --- | --- | --- | --- |
+| `35` | MsgType | Y | `V` — Market Data Request |
+| `262` | MDReqID | Y | `id-220929160342682-26` — must be unique, or the ID of a previous request when `263=2` |
+| `263` | SubscriptionRequestType | Y | `1` — Snapshot + Updates (`0` Snapshot, `2` Unsubscribe) |
+| `264` | MarketDepth | N | `0` — full book depth (`1` top of book, `2` and above a level count) |
+| `265` | MDUpdateType | — | `0` — Full refresh |
+| `1070` | MDQuoteType | N | `1` — Tradeable, i.e. Firm (`0` Indicative) |
+| `146` | NoRelatedSym | — | `1` |
+| `55` | Symbol | Y | `ETH-USD` |
+| `269` | MDEntryType | — | `0` Bid and `1` Offer requested |
+| `20020` | NoSizeBucketsSegments | N | `4` — four size buckets follow |
+| → `20021` | SizeBucket | Y | `1`, `2`, `5`, `10` |
+
+Tag `267` appears in the sample but is not listed in the Market Data Request field
+table of the specification, so it is not decoded here.
+
+<Warning>
+This sample carries **both** `MarketDepth` (264) and `NoSizeBucketsSegments`
+(20020). The specification states that exactly one of the two must be specified and
+that supplying both **will result in an error** — so replaying these bytes
+unmodified is rejected with a MarketDataRequestReject (`35=Y`), not answered with a
+snapshot.
+
+Send `264` for a depth-based book, or `20020`/`20021` for aggregated size levels,
+and never both. Size buckets are only supported with `MDUpdateType` (265) `= 0`
+(Full refresh).
+</Warning>
+
+### MarketDataSnapshot Response
+
+```text Trillion Digital → client
+8=FIX.4.4^A9=608^A35=W^A34=2^A49=Trillion Digital^A52=20220930-13:28:06.454^A56=CUSTOMER_MD^A55=ETH-USD^A262=id-220929160342682-26^A268=8^A269=0^A270=1320.43^A271=1.00000000^A272=20220930^A273=13:28:06.401^A269=0^A270=1320.43^A271=2.00000000^A272=20220930^A273=13:28:06.401^A269=0^A270=1320.43^A271=5.00000000^A272=20220930^A273=13:28:06.401^A269=0^A270=1320.43^A271=10.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=1.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=2.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=5.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=10.00000000^A272=20220930^A273=13:28:06.401^A10=247^A
+```
+
+| Tag | Field | Req | Value |
+| --- | --- | --- | --- |
+| `35` | MsgType | Y | `W` — Market Data Snapshot Full Refresh |
+| `55` | Symbol | Y | `ETH-USD` |
+| `262` | MDReqID | Y | Echoes the request's `262` |
+| `268` | NoMDEntries | Y | `8` — number of entries following |
+| → `269` | MDEntryType | Y | `0` Bid ×4, then `1` Offer ×4 |
+| → `270` | MDEntryPx | Y | `1320.43` on every bid, `1323.42` on every offer |
+| → `271` | MDEntrySize | Y | `1.00000000`, `2.00000000`, `5.00000000`, `10.00000000` per side |
+| → `272` | MDEntryDate | Y | `20220930` |
+| → `273` | MDEntryTime | Y | `13:28:06.401` |
+
+<Tip>
+The eight entries are the four requested size buckets (`1`, `2`, `5`, `10`) priced
+on each side. With size buckets, `MDEntryPx` (270) is the aggregated price for that
+bucket, which is why all four bids share `1320.43` at this instant rather than
+stepping down a book.
+
+Each `35=W` is a complete replacement of the book for that symbol, not a delta.
+Discard the previous snapshot on arrival — delta updates are a future release.
+</Tip>
+
+<Note>
+`MDEntryDate` (272) and `MDEntryTime` (273) are separate fields and must be
+recombined to get a single UTC instant. `273` carries millisecond precision.
+</Note>
