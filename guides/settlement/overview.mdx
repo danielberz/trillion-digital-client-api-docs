@@ -9,7 +9,8 @@ pre-registered instructions.
 
 <CardGroup cols={2}>
   <Card title="Fiat" icon="building-columns" href="/guides/settlement/fiat">
-    Bank transfers over Fedwire, SWIFT, ACH, SEPA, or internal book transfer.
+    Domestic and international wires, plus internal settlement networks where
+    both sides bank at the same institution.
   </Card>
   <Card title="Crypto" icon="link" href="/guides/settlement/crypto">
     On-chain transfers to whitelisted wallet addresses.
@@ -32,8 +33,12 @@ you need them.
 
 <Steps>
   <Step title="Register settlement instructions">
-    Bank details for each currency you will settle in. See
+    The instruction that says which rail a currency settles over. See
     [Settlement instructions](/guides/settlement/settlement-instructions).
+  </Step>
+  <Step title="Whitelist bank accounts">
+    Every fiat destination, verified and approved before it can be paid. See
+    [Bank account whitelisting](/guides/settlement/bank-accounts).
   </Step>
   <Step title="Whitelist wallet addresses">
     Every crypto destination, per asset and network. See

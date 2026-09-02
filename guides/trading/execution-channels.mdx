@@ -1,0 +1,142 @@
+---
+title: "How you can trade"
+sidebarTitle: "Execution channels"
+description: "High-touch OTC, chat, the portal, and the API — and when each one is the right choice."
+---
+
+Trillion Digital distributes the same liquidity through four channels. They are
+not tiers, and most clients use more than one: a desk might run systematic flow
+over the API and pick up the phone for a block that needs working.
+
+<CardGroup cols={2}>
+  <Card title="High-touch OTC" icon="phone">
+    Deal directly with a trader. For size, illiquid pairs, and anything that
+    needs to be worked or structured.
+  </Card>
+  <Card title="Chat" icon="comments">
+    Request and accept quotes from Telegram, Slack, or WhatsApp. Conversational,
+    with an audit trail.
+  </Card>
+  <Card title="Portal" icon="display">
+    The web terminal. Self-service RFQ, blotter, balances, and statements. No
+    development required.
+  </Card>
+  <Card title="API" icon="code">
+    Programmatic access over WebSocket, REST, or FIX. For automation and
+    systematic flow.
+  </Card>
+</CardGroup>
+
+## Choosing a channel
+
+| | High-touch | Chat | Portal | API |
+| --- | --- | --- | --- | --- |
+| **Best for** | Large or complex trades | Ad-hoc dealing on the move | Day-to-day manual trading | Automation, systematic flow |
+| **Price discovery** | Negotiated with a trader | RFQ | RFQ and streaming | RFQ and streaming |
+| **Setup required** | None | Channel provisioning | Login | Integration work |
+| **Human in the loop** | Yes | Yes, when needed | No | No |
+| **Available** | Desk hours | Desk hours | 24/7 | 24/7 |
+
+<Note>
+Pricing is not a function of the channel. The same trade in the same size prices
+the same whether it is requested by phone, chat, portal, or API — the channel
+determines convenience and workflow, not economics.
+</Note>
+
+## High-touch OTC
+
+Speak or message directly with a trader. This is the right channel when the trade
+is large enough that execution strategy matters, when the pair is thin, when you
+want the trade worked over a period rather than filled at a point, or when the
+structure is not a simple spot exchange.
+
+<Steps>
+  <Step title="Reach the desk">
+    Through your account manager or the dealing channel established during
+    onboarding.
+  </Step>
+  <Step title="Discuss the trade">
+    Instrument, size, direction if you wish to disclose it, and any constraints
+    on how it should be executed.
+  </Step>
+  <Step title="Receive a price">
+    Quoted for your specific size.
+  </Step>
+  <Step title="Confirm">
+    On agreement the trade is booked and a confirmation is issued, exactly as
+    with any other channel.
+  </Step>
+</Steps>
+
+<Tip>
+If a quote you can see in the portal or over the API looks wrong for the size you
+want, that is precisely the moment to call the desk rather than trade on it.
+Screen liquidity is not the whole of what the desk can do.
+</Tip>
+
+## Chat
+
+Quote and trade from Telegram, Slack, or WhatsApp, in a channel provisioned for
+your account. Useful when you are away from a terminal, and popular with
+treasury teams who want dealing to sit in the same place as the rest of their
+operational conversation.
+
+Typical commands cover requesting a quote, booking, modifying and cancelling,
+listing available pairs, and retrieving settlement instructions.
+
+<Note>
+Send `/help` in your channel for the current command set — it is authoritative
+and reflects exactly what your account is entitled to, which a documentation page
+cannot.
+</Note>
+
+<Warning>
+Chat channels are provisioned per account and per group. If your group is
+upgraded or migrated by the messaging platform, the channel identifier can change
+and the bot will stop responding — tell us rather than assuming the service is
+down.
+</Warning>
+
+## Portal
+
+The web terminal at
+[trading.trilliondigital.io](https://trading.trilliondigital.io), with sandbox at
+`sandbox.trading.trilliondigital.io`. Request quotes, trade, and review your
+blotter, balances, and statements.
+
+Access is provisioned during onboarding — see
+[Users and roles](/guides/accounts/users-and-roles). Every user is named and
+enrols multi-factor authentication.
+
+## API
+
+Programmatic access for automation, market-making, and systematic strategies.
+
+<CardGroup cols={3}>
+  <Card title="WebSocket" href="/trading-api/websocket/overview">
+    The primary interface. Market data, RFQ, order entry, fills, balances.
+  </Card>
+  <Card title="REST" href="/trading-api/rest/overview">
+    Reference and historical data.
+  </Card>
+  <Card title="FIX 4.4" href="/trading-api/fix/overview">
+    For firms with existing FIX infrastructure.
+  </Card>
+</CardGroup>
+
+Start at the [Trading API quickstart](/trading-api/quickstart). Build against
+sandbox before requesting production credentials — see
+[Environments](/trading-api/environments).
+
+## Settlement is the same everywhere
+
+Whichever channel executes the trade, settlement runs the same way: against your
+registered [settlement instructions](/guides/settlement/settlement-instructions),
+[bank accounts](/guides/settlement/bank-accounts), and
+[whitelisted wallets](/guides/settlement/wallet-whitelisting).
+
+<Warning>
+Trading through a new channel does not re-open settlement setup, and it does not
+create a route to pay a destination that has not been registered. A trade agreed
+by phone still settles only to an approved destination.
+</Warning>

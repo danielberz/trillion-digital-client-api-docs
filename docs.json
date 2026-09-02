@@ -42,6 +42,7 @@
               {
                 "group": "Trading",
                 "pages": [
+                  "guides/trading/execution-channels",
                   "guides/trading/how-otc-trading-works",
                   "guides/trading/rfq-workflow",
                   "guides/trading/instruments",
@@ -55,6 +56,7 @@
                   "guides/settlement/fiat",
                   "guides/settlement/crypto",
                   "guides/settlement/settlement-instructions",
+                  "guides/settlement/bank-accounts",
                   "guides/settlement/wallet-whitelisting"
                 ]
               },

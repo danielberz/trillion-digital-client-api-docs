@@ -231,3 +231,50 @@ pre code .line {
     order: 3;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Page width
+ *
+ * Mintlify caps the docs shell (sidebar + content + TOC) at max-width 1472px
+ * and centres it, which on a wide display leaves ~230px of dead space each side
+ * and pushes the sidebar well off the left edge.
+ *
+ * Release the cap so the shell runs near full-bleed and the sidebar sits close
+ * to the viewport edge. The prose column inside `main` has its own narrower
+ * constraint, so line length is unaffected — the extra room goes to the
+ * sidebar position and to wide reference tables, which is exactly where it is
+ * useful.
+ *
+ * `:has(> main)` targets the shell without depending on Mintlify's generated
+ * Tailwind class names, which are not stable across releases.
+ * ------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  div:has(> main) {
+    max-width: none !important;
+    margin-inline: 0 !important;
+    padding-inline: 1.5rem !important;
+  }
+}
+
+/* The navbar sits in its own `max-w-8xl mx-auto` wrapper, so releasing only the
+ * body shell above leaves the logo centred while the sidebar hugs the edge.
+ * Scoped with :has(.nav-logo) so it cannot catch an unrelated max-w-8xl. */
+@media (min-width: 1024px) {
+  .max-w-8xl:has(.nav-logo) {
+    max-width: none !important;
+    margin-inline: 0 !important;
+  }
+
+  /* The inner bar carries lg:px-12 (48px); match the shell's 1.5rem so the logo
+   * lines up with the sidebar rather than sitting 24px further in. */
+  .max-w-8xl:has(.nav-logo) [class*="px-12"] {
+    padding-inline: 1.5rem !important;
+  }
+
+  /* The home page is custom-mode and set its own 76rem column, which now reads
+   * narrow against a full-bleed navbar. Align it with everything else. */
+  .td-hero,
+  .td-home-body {
+    max-width: none;
+  }
+}

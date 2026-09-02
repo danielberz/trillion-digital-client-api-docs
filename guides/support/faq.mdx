@@ -105,6 +105,23 @@ description: "Common questions, with the answers that actually resolve them."
     town, and country on both the beneficiary and the bank. See
     [Fiat settlement](/guides/settlement/fiat).
   </Accordion>
+  <Accordion title="My wire was refused because the beneficiary banks with the same institution.">
+    Some banks will not wire to their own customer and require their internal
+    rail instead. The beneficiary has to be re-registered with that network's
+    identifier — a rail address, UUID, or email depending on the network. See
+    [Internal settlement networks](/guides/settlement/fiat#internal-settlement-networks).
+  </Accordion>
+  <Accordion title="Can I use an internal rail to move money between my own accounts?">
+    No. Internal networks pay *other* customers of the same institution; a move
+    between your own accounts is a book transfer. Institutions enforce this and
+    will refuse a self-addressed rail transfer outright.
+  </Accordion>
+  <Accordion title="Why can't I edit a registered bank account or rail address?">
+    Changes are treated as a new registration so they are re-verified and
+    re-screened. Rail addresses in particular are resolved at creation and are
+    immutable afterwards. See
+    [Bank account whitelisting](/guides/settlement/bank-accounts).
+  </Accordion>
   <Accordion title="Can I cancel a withdrawal?">
     Only while it is `PendingApproval`. Once it reaches `PendingTransfer` it
     cannot be recalled — and once an on-chain transaction is broadcast, nobody

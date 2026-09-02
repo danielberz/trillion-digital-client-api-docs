@@ -27,8 +27,17 @@ that currency.
   Where the receiving bank requires one for international payments.
 </ResponseField>
 <ResponseField name="Currency and rail" required>
-  Which currency and rail this instruction applies to.
+  Which currency and rail this instruction applies to. The rail decides which of
+  the fields above are actually required — see
+  [Fiat settlement](/guides/settlement/fiat) for the full set of supported rails
+  and the identifiers each one needs.
 </ResponseField>
+
+<Note>
+An instruction says *how* a currency settles. The account it pays is registered
+and approved separately — see
+[Bank account whitelisting](/guides/settlement/bank-accounts).
+</Note>
 
 <Warning>
 Both the **beneficiary** address and the **bank** address are required for wire
