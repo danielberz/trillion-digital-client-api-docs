@@ -6,8 +6,9 @@ description: "Algorithmic order strategies, their parameters, and the order stat
 
 `Strategy` on a [`NewOrderSingle`](/trading-api/websocket/commands) selects an
 execution algorithm; its settings travel in the `Parameters` object alongside it.
-Two algorithmic strategies are supported: `SteadyPace` and `StopLimit`. All
-progress — activation, clips, triggers, fills, terminal states — arrives on the
+`SteadyPace` and `StopLimit` are the two algorithmic strategies documented for
+`NewOrderSingle`. All progress — activation, clips, triggers, fills, terminal
+states — arrives on the
 [`Order` and `ExecutionReport`](/trading-api/websocket/streams/order) streams.
 
 ## Trading strategy workflow
@@ -56,13 +57,26 @@ unique daily and among any open order, and must be **less than 36 characters**.
 
 <Warning>
 A canonical hyphenated UUID4 is exactly 36 characters, which does not satisfy the
-documented "less than 36" limit. Use the 32-character hyphen-less form to stay
-inside it. Because `ClOrdID` is only required to be unique *daily*, a naive
-sequence-based scheme that resets each session will eventually collide with a
-still-open order from earlier in the day and have the request rejected.
+documented "less than 36" limit — even though the API's own examples show
+hyphenated 36-character `ClOrdID`s. The 32-character hyphen-less form is inside
+the limit either way. Because `ClOrdID` is only required to be unique *daily*, a
+naive sequence-based scheme that resets each session will eventually collide with
+a still-open order from earlier in the day and have the request rejected.
 </Warning>
 
 ## Supported order strategies
+
+Each strategy reads its own keys out of the `Parameters` object. `Parameters`
+additionally carries `ErrorAction` in the API's own `NewOrderSingle`,
+`OrderCancelReplaceRequest` and `Order` examples (`"ErrorAction": "Pause"`); it is
+not described in any parameter table, so its accepted values are undocumented.
+
+<Note>
+The `Strategy` field on `OrderCancelReplaceRequest` also names `Pegged`, `TWAP`,
+`FullAmount` and `TimeSliced` alongside `SteadyPace`. No parameters are specified
+for those four anywhere in the API reference, and `NewOrderSingle` documents only
+`SteadyPace` and `StopLimit` — confirm availability before building against them.
+</Note>
 
 ### SteadyPace
 
@@ -78,7 +92,7 @@ submits them at equal, user defined intervals.
       "Symbol": "BTC-USD",
       "ClOrdID": "4d48992015da11ecb5e77f4881f01b7d",
       "Side": "Buy",
-      "OrderQty": "10",
+      "OrderQty": "4",
       "OrdType": "Limit",
       "Price": "43000",
       "Currency": "BTC",
@@ -97,9 +111,13 @@ submits them at equal, user defined intervals.
 }
 ```
 
+Eight clips of `0.5` at `2h45m` complete the `4` BTC parent inside the 24-hour
+`StartTime`–`EndTime` window. Size the clip and the interval so the schedule fits
+the window; work left over when `EndTime` passes does not execute.
+
 #### SteadyPace parameters
 
-<ParamField body="ClipSize" type="Qty" required>
+<ParamField body="ClipSize" type="decimal" required>
   A quantity (subset of the total order size) to send on each execution of the
   schedule.
 </ParamField>
@@ -161,7 +179,7 @@ current market price.
 
 #### StopLimit parameters
 
-<ParamField body="TriggerPrice" type="Price" required>
+<ParamField body="TriggerPrice" type="decimal" required>
   The price that must be met to trigger execution of the order with the
   configured limit price.
 </ParamField>
@@ -173,9 +191,8 @@ current market price.
 <Warning>
 `OrderCancelReplaceRequest` supports `SteadyPace`, not `StopLimit`. Moving a
 trigger price therefore means cancelling and resubmitting, and the stop is not
-working for the interval between the `Canceled` report and the `New` report on
-the replacement order — a gap that widens exactly when the market is moving
-fastest.
+working between the `Canceled` report on the old order and the `New` report on
+the replacement.
 </Warning>
 
 ## Order state change matrices

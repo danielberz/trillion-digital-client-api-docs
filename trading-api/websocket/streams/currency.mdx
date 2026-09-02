@@ -103,11 +103,14 @@ exposure in a single reporting currency.
 ### Parameters
 
 <ParamField body="EquivalentCurrency" type="string" required>
-  Quote currency to base the conversion rates on.
+  Quote currency to base the conversion rates on. It is a single string, so one
+  subscription reports against exactly one currency; a second reporting currency
+  needs a second subscription under its own `reqid`.
 </ParamField>
 <ParamField body="Currencies" type="string[]">
-  List of currencies and securities to generate conversion rates for. Defaults to
-  all available currencies.
+  List of currencies and securities to generate conversion rates for — securities
+  are accepted alongside currencies, as in `["BTC", "ETH", "BCH-USD"]`. Defaults
+  to all available currencies.
 </ParamField>
 <ParamField body="Throttle" type="string">
   Optional throttle interval for conversion rate updates. Minimum and default
@@ -177,23 +180,10 @@ specified. Use it for reporting and display; price and size trades from
 RFQ, never from a conversion rate.
 </Warning>
 
-<Warning>
-`EquivalentCurrency` is a single string and is the only required parameter, so a
-subscription produces rates against exactly one reporting currency, and it must
-be supplied — a `CurrencyConversion` subscribe with no parameters is not a valid
-request. Reporting in a second currency needs a second subscription under its own
-`reqid`; you cannot ask for USD and CHF on one stream.
-</Warning>
-
 <Note>
 Rows also carry `Status` and `ConversionPath` — `Online` and `(ETH-USD)` in the
 published example — neither of which appears in the specification's response
 table. Their value sets are undefined here, so do not gate logic on them.
-</Note>
-
-<Note>
-`Currencies` accepts securities as well as currencies: the specification's own
-example requests `BCH-USD` alongside `BTC` and `ETH`.
 </Note>
 
 <Note>

@@ -22,6 +22,14 @@ provided to the client during onboarding:
 - Hostname
 - Port number
 
+<Note>
+Sandbox and production are isolated, and each has its own FIX endpoint and its
+own API key — a sandbox key will not log on to production. Request both from
+[support@trilliondigital.io](mailto:support@trilliondigital.io). See
+[Environments](/trading-api/environments) and
+[Authentication](/trading-api/authentication).
+</Note>
+
 ## Configuration
 
 Trillion Digital acts as an **acceptor** for all FIX sessions. Your system is the
@@ -47,8 +55,9 @@ Recovery is a per-session property, and the split above is the reason it works.
 On a session with recovery **disabled**, messages missed across a disconnect are
 not retransmitted — tolerable for market data, where each update is a full
 snapshot, and not for order flow, where a missed ExecutionReport is a position
-you do not know you hold. Collapsing both flows onto one recovery-disabled
-session gives that guarantee up silently.
+you do not know you hold. Collapsing both flows onto a single recovery-disabled
+session gives up that guarantee silently — nothing in the protocol tells you the
+report existed.
 </Note>
 
 ## Protocol
@@ -76,10 +85,13 @@ precision, in the format `YYYYddmm-HH:MM:SS.ffffff`:
 20140515-19:49:56.659441
 ```
 
-<Note>
-The specification writes the accepted pattern as `YYYYddmm-HH:MM:SS.ffffff`. The
-three examples above are the authoritative illustration of the accepted forms.
-</Note>
+<Warning>
+The specification writes the accepted pattern as `YYYYddmm-HH:MM:SS.ffffff`,
+which contradicts its own examples: `20140515-19:49:56` is 15 May 2014, so the
+date part is year, **month**, day — the standard FIX `UTCTimestamp`. Build to the
+examples, not to the literal pattern string, and confirm with Trillion Digital
+if you need it settled in writing.
+</Warning>
 
 ## Market data requests and updates
 
@@ -101,8 +113,9 @@ selectors, is on [Market data](/trading-api/fix/market-data).
 
 ## Orders submission and updates
 
-The orders API supports order submission. All orders can be amended and cancelled
-via the API — see [Orders](/trading-api/fix/orders) for NewOrderSingle (`35=D`),
+The orders API supports order submission. Market and Limit orders are currently
+supported. All orders can be amended and cancelled via the API — see
+[Orders](/trading-api/fix/orders) for NewOrderSingle (`35=D`),
 OrderCancelRequest (`35=F`), OrderCancelReplaceRequest (`35=G`), ExecutionReport
 (`35=8`), and OrderCancelReject (`35=9`).
 
@@ -199,12 +212,6 @@ will misfire the first time somebody trades through the UI.
 | OrderCancelReject | `9` | Trillion Digital → client | Cancel or cancel/replace refused |
 | SecurityListRequest | `x` | Client → Trillion Digital | Request tradeable securities |
 | SecurityList | `y` | Trillion Digital → client | Security definitions |
-
-<Note>
-Sandbox and production FIX credentials are separate and not interchangeable, as
-they are for REST and the WebSocket — see
-[Authentication](/trading-api/authentication).
-</Note>
 
 ## Reference
 

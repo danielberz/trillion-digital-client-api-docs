@@ -3,9 +3,9 @@ title: "Security"
 description: "Securities available to trade, with their increments and size limits."
 ---
 
-Streams the securities available to your account. Subscribe to this first — it
-tells you what symbols exist and, critically, the increments your orders must
-respect.
+Streams Trillion Digital's security master: the securities supported over the API
+and available to trade. Subscribe to this first — it tells you what symbols exist
+and, critically, the increments your orders must respect.
 
 The first message carries a snapshot of every available security and is flagged
 `initial: true`. Every message after that is a **delta** against that snapshot,
@@ -139,17 +139,19 @@ rejects its own orders on everything else. Equally, a client that ignores
 withdrawn.
 </Warning>
 
-<Warning>
-Two fields are not shaped the way the field table above implies, and a strict
-deserialiser will fail on both:
+<Note>
+Three fields are not shaped the way the field table above implies, and a strict
+deserialiser will fail on them:
 
 - `SecurityID` is documented as a string but is published as a JSON number
   (`"SecurityID": 2`). Parse it permissively; do not key anything off it.
 - `SizeBuckets` is documented as an array of decimals but is published as an
   array of objects (`[{ "Size": "0" }]`).
+- `Expiration` is documented as a decimal, not a datetime, despite being a point
+  in time.
 
 `SizeDisplaySpec` is also present on the wire — the counterpart to
 `PriceDisplaySpec` — but is absent from the specification's field table, so
 neither its optionality nor its full value set is defined. Treat it as display
 metadata only.
-</Warning>
+</Note>

@@ -5,10 +5,10 @@ description: "Logon signing, heartbeats, resend, reject, sequence reset, and log
 ---
 
 Session level messages open, maintain, recover, and close a FIX 4.4 session.
-Every one of them carries the standard header and trailer; the tables below list
-only the body fields.
+Every one of them carries the standard header and trailer, shown in the tables
+below as the `<MessageHeader>` and `<MessageTrailer>` rows.
 
-Examples on this page use `^A` for the ASCII 01 delimiter.
+Examples on this page use `^A` for the ASCII 01 (SOH) field delimiter.
 
 ## Logon (35=A)
 
@@ -84,9 +84,8 @@ character `0x01` — the same byte that delimits FIX fields on the wire. Writing
 the six literal characters `\u0001`, or a `|`, or `^A`, into the string produces
 a signature that is perfectly well formed and simply wrong. The session is
 refused at logon with nothing to distinguish it from a bad secret or a wrong API
-key, which is why this failure typically costs an afternoon. Verify the byte
-before suspecting the credentials: the signed string for the example above is 49
-bytes, and each separator must be exactly one of them.
+key, so verify the byte before suspecting the credentials: the signed string for
+the example above is 49 bytes, and each separator must be exactly one of them.
 </Warning>
 
 <Warning>
@@ -149,10 +148,10 @@ private static String sign(final String apiSecret, final String data) {
 
 <Tip>
 In Java source, `"\u0001"` is a compiler-level escape and yields the single SOH
-character, so the sample is correct as written. Languages that do not process
-unicode escapes in ordinary string literals need the byte spelled explicitly —
-`\x01` in Python, `\u0001` in a JavaScript string, `\001` in a shell
-`printf` format.
+character, so the sample is correct as written. Use whichever escape your own
+language resolves to that byte — `"\x01"` in Python, `"\u0001"` in JavaScript,
+`\001` in a shell `printf` format — and never a literal backslash sequence in a
+context that does not process escapes at all.
 </Tip>
 
 <Note>
@@ -252,8 +251,8 @@ disconnect — a clean Logout and a dropped TCP connection have the same effect 
 your working orders, and reconnecting does not restore them.
 
 Cancel on Disconnect does not affect other orders for the same user that were
-submitted on other sessions, or orders that were explicitly placed as
-`CancelOnDisconnect=N`. If an order must outlive the session, submit it that way
-in the first place — see
+submitted on other sessions, or orders that were explicitly placed with
+`CancelOnDisconnect` (20030) set to `N`. If an order must outlive the session,
+submit it that way in the first place — see
 [NewOrderSingle](/trading-api/fix/orders).
 </Warning>

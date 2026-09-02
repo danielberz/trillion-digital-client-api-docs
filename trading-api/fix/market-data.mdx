@@ -23,7 +23,7 @@ updates will be supported in a future release.
 
 | Tag | Field | Req | Description |
 | --- | --- | --- | --- |
-| — | `<MessageHeader>` | Y | `MsgType(35) = V` |
+| — | `<MessageHeader>` | Y | `MsgType <35> = V` |
 | `262` | MDReqID | Y | Must be unique, or the ID of a previous Market Data Request to disable if `SubscriptionRequestType(263) = 2` (disable previous Snapshot + Updates request) |
 | `263` | SubscriptionRequestType | Y | `0` = Snapshot, `1` = Snapshot + Updates (Subscribe), `2` = Unsubscribe |
 | `264` | MarketDepth | N | Depth of market for book snapshot / incremental updates. `0` = full book depth, `1` = top of book, `2` and above = book depth (number of levels). Exactly one of tag `264` or tag `20020` must be specified |
@@ -48,7 +48,9 @@ is never named.
 ## Price levels or size levels
 
 The two aggregation modes are mutually exclusive and are selected by which tag
-you send.
+you send. Both snippets below show body fields only — the standard header and
+trailer are omitted, and only the size-level form appears as a sample in the
+specification.
 
 <Tabs>
   <Tab title="Price levels — MarketDepth (264)">
@@ -91,7 +93,7 @@ original subscription keeps streaming while you believe it stopped. Persist the
 
 | Tag | Field | Req | Description |
 | --- | --- | --- | --- |
-| — | `<MessageHeader>` | Y | `MsgType(35) = Y` |
+| — | `<MessageHeader>` | Y | `MsgType <35> = Y` |
 | `262` | MDReqID | Y | Refers to the MDReqID of the request |
 | `58` | Text | N | |
 | — | `<MessageTrailer>` | Y | Standard trailer |
@@ -100,7 +102,7 @@ original subscription keeps streaming while you believe it stopped. Persist the
 
 | Tag | Field | Req | Description |
 | --- | --- | --- | --- |
-| — | `<MessageHeader>` | Y | `MsgType(35) = W` |
+| — | `<MessageHeader>` | Y | `MsgType <35> = W` |
 | `262` | MDReqID | Y | Refers to the MDReqID of the request |
 | `55` | Symbol | Y | Symbol updated by the Market Data Entry |
 | `268` | NoMDEntries | Y | Number of entries following |
@@ -131,18 +133,21 @@ was priced.
 </Note>
 
 <Tip>
-There is no level index or bucket identifier in the group. Entries are
-distinguished only by `MDEntryType(269)` and `MDEntrySize(271)`, so key your book
-on that pair when you subscribed with size buckets and rely on `269` plus
-ordering when you subscribed with `MarketDepth(264)`.
+The repeating group carries no level index or bucket identifier: the only fields
+that distinguish one entry from another are `MDEntryType(269)`, `MDEntryPx(270)`
+and `MDEntrySize(271)`. With size buckets that pair of type and size identifies
+the bucket. With `MarketDepth(264)` the specification defines no field that says
+which level an entry is, so treat each snapshot as the complete set of levels for
+the side rather than expecting to address a level by number.
 </Tip>
 
 ## Worked example
 
 A size-level subscription to `ETH-USD` for bids and offers at sizes 1, 2, 5 and
-10.
+10, reproduced from the specification. The full set of wire samples is on
+[FIX examples](/trading-api/fix/examples).
 
-```text Client → server
+```text Client → Trillion Digital
 8=FIX.4.4^A9=186^A35=V^A34=2^A49=CUSTOMER_MD^A52=20220930-13:28:06.146^A56=Trillion Digital^A262=id-220929160342682-26^A263=1^A264=0^A265=0^A1070=1^A146=1^A55=ETH-USD^A267=2^A269=0^A269=1^A20020=4^A20021=1^A20021=2^A20021=5^A20021=10^A10=226^A
 ```
 
@@ -172,7 +177,7 @@ template for a size-level subscription.
 The response returns one entry per side per requested bucket — two sides times
 four buckets, so `268=8`.
 
-```text Server → client
+```text Trillion Digital → client
 8=FIX.4.4^A9=608^A35=W^A34=2^A49=Trillion Digital^A52=20220930-13:28:06.454^A56=CUSTOMER_MD^A55=ETH-USD^A262=id-220929160342682-26^A268=8^A269=0^A270=1320.43^A271=1.00000000^A272=20220930^A273=13:28:06.401^A269=0^A270=1320.43^A271=2.00000000^A272=20220930^A273=13:28:06.401^A269=0^A270=1320.43^A271=5.00000000^A272=20220930^A273=13:28:06.401^A269=0^A270=1320.43^A271=10.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=1.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=2.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=5.00000000^A272=20220930^A273=13:28:06.401^A269=1^A270=1323.42^A271=10.00000000^A272=20220930^A273=13:28:06.401^A10=247^A
 ```
 
@@ -197,5 +202,5 @@ directly usable for pricing a clip.
 The equivalent on the WebSocket API is the
 [`MarketDataSnapshot`](/trading-api/websocket/streams/market-data-snapshot)
 stream, which offers the same price-level and size-bucket choice plus throttling.
-Order entry messages are covered in [FIX messages](/trading-api/fix/orders).
+Order entry messages are covered in [FIX orders](/trading-api/fix/orders).
 </Note>

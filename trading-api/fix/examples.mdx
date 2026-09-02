@@ -4,17 +4,31 @@ sidebarTitle: "Examples"
 description: "Verbatim FIX 4.4 wire samples for logon, security list, orders, and market data."
 ---
 
-Every sample below is reproduced exactly as published in the Trillion Digital FIX
+Every sample below is reproduced as published in the Trillion Digital FIX
 specification 2.50. `^A` denotes the **ASCII 01** (SOH) field delimiter.
 
-Diff your encoder output against these byte for byte. `BodyLength` (9) and
-`CheckSum` (10) are computed over the exact bytes of each sample and will not
-match a message in which you have substituted your own IDs, symbols, or
-timestamps.
+Use these to check your **field order and tag set**. In every decode table,
+**Req** is the specification's `Req'd` flag for that message. `—` marks a tag
+that appears in the sample but is not listed in that message's field table.
 
-In every decode table, **Req** is the specification's `Req'd` flag for that
-message. `—` marks a tag that appears in the sample but is not listed in that
-message's field table.
+<Warning>
+**Do not use the published `BodyLength` (9) and `CheckSum` (10) as expected
+values.** Neither matches the bytes printed alongside it. In all eight samples
+the declared `9` is exactly 11 bytes short of the body that follows it, and no
+declared `10` is the checksum of the bytes shown — the `CompID` values were
+lengthened when the samples were transcribed into the specification and the
+framing fields were never recomputed.
+
+Compute both from your own bytes. A conformance test that asserts `9=143` on the
+Logon below will fail against a correct encoder, and against the real gateway.
+</Warning>
+
+<Note>
+The `ExecutionReport (Reject)` sample is printed in the specification with a
+doubled delimiter before the checksum (`^A10=205^^A`). Every other sample
+terminates `^A10=NNN^A`, so it is shown normalised here. A FIX message has
+exactly one SOH after the `CheckSum` field.
+</Note>
 
 <Note>
 The order samples use `SenderCompID` `CUSTOMER`; the market data samples use

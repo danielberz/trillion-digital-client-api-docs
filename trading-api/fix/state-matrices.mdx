@@ -4,9 +4,9 @@ sidebarTitle: "State matrices"
 description: "The exact ExecutionReport sequences for filled, cancelled, and replaced orders."
 ---
 
-These matrices are the definitive answer to what your state machine should do.
-Each one walks a single order from submission to a terminal state, showing every
-message on the wire in order and the values that arrive with it.
+These four matrices are the reference for what your order state machine should
+do. Each walks a single order from submission through to its outcome, showing
+every message on the wire in sequence and the values that arrive with it.
 
 ## Reading the matrices
 
@@ -18,11 +18,18 @@ carries `ClOrdID` B alone.
 The **Time** column is a step index, not a clock. Where two rows share the same
 index they are alternative branches — one or the other occurs, never both.
 
+Two message names are written as the matrices print them: `OrderCancelRejected`
+is the `OrderCancelReject` message (`35=9`), and `OrderCancel/ReplaceRequest` is
+the `OrderCancelReplaceRequest` message (`35=G`). Everything else in the Response
+column is an `ExecutionReport` (`35=8`).
+
 <Note>
 `ExecType` (150) and `OrdStatus` (39) are shown by name. The wire carries the
-single-character codes listed on the
-[ExecutionReport](/trading-api/fix/orders) — `ExecType` describes the specific
-report, `OrdStatus` always identifies the current order status.
+single-character codes listed under
+[ExecType (150)](/trading-api/fix/orders#exectype-150) and
+[OrdStatus (39)](/trading-api/fix/orders#ordstatus-39) — `ExecType` describes
+this specific execution report, `OrdStatus` always identifies the current order
+status.
 </Note>
 
 The quantity columns follow one invariant, stated by the `LeavesQty` (151)
@@ -72,10 +79,11 @@ the cancel can be refused.
 | 7 | | `ExecutionReport(B,A)` | Canceled | Canceled | 10 | 0 | 0 | | |
 
 <Warning>
-The rejection rows carry **no `ExecType`** — `OrderCancelRejected` is a different
-message type and does not carry tag 150 at all. Handlers that switch on
-`ExecType` for every inbound message will drop the reject on the floor and leave
-the order stuck in `PendingCancel` forever, while it is still live and fillable.
+The rejection rows carry **no `ExecType`** — `OrderCancelReject` (`35=9`) is a
+different message type and has no `ExecType` (150) field at all. Handlers that
+switch on `ExecType` for every inbound message will drop the reject on the floor
+and leave the order stuck in `PendingCancel` forever, while it is still live and
+fillable.
 
 Note also that the reject can arrive at time 5 (before any `PendingCancel`) or at
 time 6 (after it), and in both cases `OrdStatus` reverts to `New`. `PendingCancel`
@@ -105,6 +113,16 @@ The report that confirms the replace pairs `ExecType` `Replaced` with `OrdStatus
 `OrdStatus` and use `ExecType` only to recognise what the report is about. From
 time 7 onwards the order is addressed by the new `ClOrdID` alone.
 </Note>
+
+<Warning>
+The time-6 `Replaced` row is reproduced exactly as the specification prints it,
+`LeavesQty` `0` included. That cell contradicts the `LeavesQty` (151) definition
+above — the order is `New` with `OrderQty` 11 and `CumQty` 0, so `LeavesQty` is
+11 — and it contradicts the next row, where a single 1-lot fill leaves 10. The
+equivalent `Replaced` row in **Replace during fill** (8 / 3 / 5) is
+arithmetically consistent. Derive `LeavesQty` from `OrderQty` − `CumQty` rather
+than from this cell.
+</Warning>
 
 ## Replace during fill
 
@@ -137,7 +155,7 @@ moment the replace is submitted will not match them to anything. Keep the old ID
 resolvable until the `Replaced` report at time 8 arrives.
 </Warning>
 
-The replaced order also demonstrates why a reduction has to be validated against
-`CumQty` rather than `OrderQty`: the replace to 8 is accepted with 3 already
-filled, leaving 5 working. A replace below the quantity already executed has no
-working remainder to apply to.
+The matrix also shows how a reduction is sized. The `OrderQty` of 8 on the
+replace is the new total for the order, not the remaining quantity: with 3
+already filled it leaves 5 working. Check a reduction against `CumQty` before
+sending it, because the executed quantity moves while the replace is in flight.

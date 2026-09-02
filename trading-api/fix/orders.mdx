@@ -37,8 +37,8 @@ Submits a new order. Market and Limit orders are currently supported.
 | `60` | TransactTime | Y | Business timestamp for this request |
 | `126` | ExpireTime | N | Optional expiration time for the order. Only valid on orders with `TimeInForce=1` (GTC). UTCTimestamp |
 | `168` | EffectiveTime | N | Time at which this order will activate and begin sending orders to the market. UTCTimestamp |
-| `847` | TargetStrategy | N | Specifies an order strategy type |
-| `957` | NoStrategyParams | N | The number of strategy parameter repeating groups |
+| `847` | TargetStrategy | N | Allows specifying an order strategy type. See [Order strategies](/trading-api/fix/strategies) |
+| `957` | NoStrategyParams | N | The number of strategy parameter repeating groups. The specification also names this group `NoStrategyParameters` (950) — see [Order strategies](/trading-api/fix/strategies) |
 | `958` | StrategyParameterName | N | The name of the strategy parameter being set |
 | `960` | StrategyParameterValue | N | The value for the strategy parameter being set |
 | `20030` | CancelOnDisconnect | N | Whether this order should be cancelled when this session disconnects, `Y` / `N`. Defaults to `Y` |
@@ -48,6 +48,17 @@ Submits a new order. Market and Limit orders are currently supported.
 symbol's base currency, so on `ETH-USD` an `OrderQty` of `1` is one ether, not
 one dollar of notional. Send it explicitly rather than relying on the default.
 </Tip>
+
+<Warning>
+**Orders are routed using the default routing strategy.** The specification
+states that specifying order strategy and algo parameters will be supported in a
+future release, so `TargetStrategy` (847) and the strategy parameter group (957,
+958, 960) describe the documented contract rather than behaviour you can rely on
+today — an order carrying tag 847 is routed with the default strategy, not as a
+triggered one. See [Order strategies](/trading-api/fix/strategies) for the
+StopLimit and TakeProfitLimit parameter sets, and confirm availability before
+building against them.
+</Warning>
 
 ### Cancel on disconnect
 
@@ -62,18 +73,18 @@ Two scopes matter:
   session**. Orders for the same user submitted on other sessions are untouched.
 - Orders explicitly placed with `CancelOnDisconnect=N` survive the disconnect.
 
-The value in force for an order is echoed back on every `ExecutionReport` in tag
-`20030`, so you can reconcile what you intended against what the platform
-recorded.
+The value in force for an order is reported back on the `ExecutionReport` in tag
+`20030` — an optional field there — so you can reconcile what you intended
+against what the platform recorded.
 
 <Warning>
 `20030=N` makes an order outlive the session that created it, and nothing on
 reconnect cleans it up — a new session is not the old session, so its own cancel
 on disconnect will never reach that order. A GTC order sent with `20030=N` keeps
-working after your engine has gone away, and you will only learn it filled from
-the drop copy on your next logon. Use `N` deliberately, and pair it with a
-recovery step that reconciles open orders at logon rather than assuming a clean
-book.
+working after your engine has gone away, and a fill it takes while you are
+disconnected is not visible to you until you reconnect. Use `N` deliberately,
+and pair it with a recovery step that reconciles open orders at logon rather than
+assuming a clean book.
 </Warning>
 
 ## OrderCancelRequest (35=F)
@@ -121,9 +132,10 @@ any of them means cancelling and resubmitting.
 must be ≤ 36 characters. Two mistakes bite here:
 
 1. **Reuse.** A repeated `ClOrdID` is rejected with `OrdRejReason=6` (Duplicate
-   Order). That rejection is what makes a resend after an uncertain disconnect
-   safe — resend the identical `ClOrdID` rather than minting a new one, or you
-   risk doubling the position.
+   Order). That duplicate guard is what makes resending the safer move after an
+   uncertain disconnect — the identical `ClOrdID` comes back as a duplicate
+   reject rather than a second order, while minting a fresh ID for the same
+   intent risks doubling the position.
 2. **Chaining to the wrong ID.** `OrigClOrdID` (41) must be the `ClOrdID` of the
    previous **non-rejected** order. A rejected amendment does not advance the
    chain, so after a `35=G` that came back as an `OrderCancelReject`, the live
@@ -173,6 +185,10 @@ and fill updates.
 | `20032` | DecisionStatus | N | The current decision-status of the order. See below |
 | `58` | Text | N | Human-readable detail |
 
+The sample above also carries `Account` (1), which the specification's
+ExecutionReport field table does not list. Read it if it helps you route the
+report, but do not require it.
+
 ### ExecType (150)
 
 Describes the specific execution report — for example Pending Cancel — while
@@ -219,7 +235,9 @@ arrives.
 Drive your order state machine from `OrdStatus` and treat `ExecType` as the
 event label. Releasing reserved quantity or flattening a position on
 `ExecType=6`, or booking a fill's size from `OrderQty` rather than `LastQty`
-(32) and `CumQty` (14), are the two ways this goes wrong in production.
+(32) and `CumQty` (14), are the two ways this goes wrong in production. The
+[order state change matrices](/trading-api/fix/state-matrices) give the exact
+sequences, including fills that arrive while an order sits in Pending Replace.
 </Warning>
 
 ### LeavesQty (151)
