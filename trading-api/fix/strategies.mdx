@@ -42,17 +42,16 @@ in `StrategyParameterName` (958); the parameter's value is carried in
 `StrategyParameterValue` (960).
 
 <Warning>
-The specification names the repeating group inconsistently. The Order Strategies
-section refers to it as **`NoStrategyParameters(950)`**, while the NewOrderSingle
-field table lists it as **`NoStrategyParams` (957)**. Both spellings and both tag
-numbers appear in the specification. The field table is the likelier of the two:
-957, 958 and 960 are contiguous, and the API follows
-[FIX 4.4](https://www.fixtrading.org/standards/fix-4-4/), whose dictionary defines
-957 as the strategy-parameter group count under the longer name the prose uses.
-Confirm the tag with Trillion Digital before wiring a FIX engine's data
-dictionary all the same — a group count sent on the wrong tag is not parsed as a
-repeating group at all, and the parameters that follow it are silently lost
-rather than rejected.
+Use **`NoStrategyParams` (957)** for the repeating group count. Tags 957, 958 and
+960 are contiguous, and 957 is the strategy-parameter group count in the
+[FIX 4.4](https://www.fixtrading.org/standards/fix-4-4/) dictionary. You may
+encounter `950` referenced elsewhere; confirm with your integration contact
+before wiring a FIX engine's data dictionary to it.
+
+This is worth getting right first time: a group count sent on the wrong tag is
+not parsed as a repeating group at all, so the parameters that follow are
+**silently dropped rather than rejected** — the order is accepted without your
+strategy applied.
 </Warning>
 
 ## StopLimit

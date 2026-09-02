@@ -85,13 +85,11 @@ precision, in the format `YYYYddmm-HH:MM:SS.ffffff`:
 20140515-19:49:56.659441
 ```
 
-<Warning>
-The specification writes the accepted pattern as `YYYYddmm-HH:MM:SS.ffffff`,
-which contradicts its own examples: `20140515-19:49:56` is 15 May 2014, so the
-date part is year, **month**, day — the standard FIX `UTCTimestamp`. Build to the
-examples, not to the literal pattern string, and confirm with Trillion Digital
-if you need it settled in writing.
-</Warning>
+<Note>
+The date part is year, **month**, day — the standard FIX `UTCTimestamp`. The
+examples above are authoritative: `20140515-19:49:56` is 15 May 2014. Build to
+that form.
+</Note>
 
 ## Market data requests and updates
 

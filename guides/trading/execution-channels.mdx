@@ -48,6 +48,50 @@ the same whether it is requested by phone, chat, portal, or API. The channel
 determines convenience and workflow, not economics.
 </Note>
 
+## One ledger, updated in real time
+
+There is a single record of your account, and every channel writes to it. There
+is no per-channel ledger, no end-of-day merge, and no reconciliation step between
+how a trade was agreed and where it appears.
+
+A trade struck **over the phone** with a trader shows up in your blotter as it is
+booked — the same blotter, with the same `TradeID`, that an API-submitted order
+lands in. Balances, credit utilisation, and settlement status move at the same
+moment for everyone looking, regardless of which channel caused the change.
+
+<CardGroup cols={3}>
+  <Card title="Positions and balances" icon="scale-balanced">
+    One set of numbers. What the portal shows is what the API returns — there is
+    no per-channel view that could drift.
+  </Card>
+  <Card title="Trade history" icon="list">
+    One blotter. Phone, chat, portal, and API trades sit side by side in it.
+  </Card>
+  <Card title="Settlement" icon="building-columns">
+    One set of instructions and approved destinations, whatever executed the
+    trade.
+  </Card>
+</CardGroup>
+
+The practical consequence is that **you can execute in one channel and monitor in
+another**. Call the desk for a block and watch it appear in the portal. Trade over
+the API and pull the confirmation from chat. Run a reconciliation job against the
+API that sees voice trades exactly as it sees its own.
+
+<Tip>
+This is why the portal is the fastest way to settle a disagreement with a
+downstream system. It is not a separate view that might have drifted — it is the
+same record the API serves, so if your book and the portal differ, the difference
+is on your side.
+</Tip>
+
+<Note>
+Real time means as the platform books it, not instantly on your screen under all
+conditions. A voice trade appears once the trader has booked it, which is a human
+step; API and portal orders book immediately. If something you expect is missing
+after a few minutes, that is worth raising rather than waiting out.
+</Note>
+
 ## Choosing a channel
 
 | | High-touch | Chat | Portal | API |
@@ -111,30 +155,59 @@ terminal.
 
 ### What you can do
 
-| Command | Purpose |
-| --- | --- |
-| `/price` | Indicative price check |
-| `/quote` | Request a firm quote (opens an RFQ) |
-| `/book` | Book the trade |
-| `/modify` | Amend a working order |
-| `/cancel` | Cancel |
-| `/pairs` | List the instruments enabled on your account |
-| `/balance` | Current balances |
-| `/trades` | Recent trade history |
-| `/ssi` | Retrieve settlement instructions as a PDF |
-| `/whitelisting` | Wallet whitelisting |
-| `/status` | Service status |
-| `/help` | The authoritative command list for your channel |
+Commands are permissioned by your role in the channel, so not every member sees
+every capability.
+
+| Command | Purpose | Who can use it |
+| --- | --- | --- |
+| `/price` | Indicative price check | Anyone in the channel |
+| `/pairs` | Instruments enabled on your account | Anyone in the channel |
+| `/last` | Your most recent activity | Anyone in the channel |
+| `/help` | Commands available to you | Anyone in the channel |
+| `/quote` | Request a firm quote (opens an RFQ) | Quote permission |
+| `/book` | Book the trade | Book permission |
+| `/modify` | Amend a working order | Book permission |
+| `/cancel` | Cancel | Book permission |
+| `/ssi` | Retrieve settlement instructions as a PDF | Channel administrator |
+| `/whitelisting` | Wallet whitelisting | Channel administrator |
+| `/status` | Account and service status | Channel administrator |
 
 <Note>
-Send `/help` in your own channel rather than relying on this table. It reflects
-exactly what your account is entitled to, which a documentation page cannot.
+`/modify` is available on Telegram and Slack. On WhatsApp, cancel and re-book
+instead.
 </Note>
 
 <Note>
+Send `/help` in your own channel rather than relying on this table. It reflects
+exactly what **your** role can do, which a documentation page cannot.
+</Note>
+
+### Permissions
+
+Three levels, set per member when the channel is provisioned:
+
+<CardGroup cols={3}>
+  <Card title="View" icon="eye">
+    Prices, instruments, recent activity. No ability to trade.
+  </Card>
+  <Card title="Quote" icon="tag">
+    Can request quotes, but cannot commit the account to a trade.
+  </Card>
+  <Card title="Book" icon="check">
+    Can book, amend, and cancel. Held by channel administrators.
+  </Card>
+</CardGroup>
+
+<Tip>
+Quote and book are deliberately separable. It lets a junior member price a trade
+for discussion while only a designated person can actually commit — useful when
+dealing happens in a shared team channel.
+</Tip>
+
+<Note>
 In **Slack** the bot is invoked by mentioning it rather than by a bare slash
-command, so that it only responds when addressed. Telegram and WhatsApp take
-commands directly.
+command, so it only responds when addressed. Telegram and WhatsApp take commands
+directly.
 </Note>
 
 ### Two things to know

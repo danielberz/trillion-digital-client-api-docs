@@ -34,7 +34,10 @@ apply the latest status.
   <Step title="Booking">
     The trade is recorded against your account with a unique trade ID and appears
     in your blotter and on the
-    [`Trade`](/trading-api/websocket/streams/trade) stream.
+    [`Trade`](/trading-api/websocket/streams/trade) stream — **regardless of how
+    it was executed.** A voice trade and an API order land in the same ledger,
+    with the same identifiers. See
+    [One ledger](/guides/trading/execution-channels#one-ledger-updated-in-real-time).
   </Step>
   <Step title="Confirmation">
     A trade confirmation is issued, stating the instrument, side, quantity,

@@ -115,13 +115,13 @@ time 7 onwards the order is addressed by the new `ClOrdID` alone.
 </Note>
 
 <Warning>
-The time-6 `Replaced` row is reproduced exactly as the specification prints it,
-`LeavesQty` `0` included. That cell contradicts the `LeavesQty` (151) definition
-above — the order is `New` with `OrderQty` 11 and `CumQty` 0, so `LeavesQty` is
-11 — and it contradicts the next row, where a single 1-lot fill leaves 10. The
-equivalent `Replaced` row in **Replace during fill** (8 / 3 / 5) is
-arithmetically consistent. Derive `LeavesQty` from `OrderQty` − `CumQty` rather
-than from this cell.
+**Always derive `LeavesQty` as `OrderQty` − `CumQty`** rather than reading it
+from a single report.
+
+The time-6 `Replaced` row above shows `0`, but the order at that point is `New`
+with `OrderQty` 11 and `CumQty` 0, so the working quantity is 11 — as the next
+row confirms, where a 1-lot fill leaves 10. Compute the value; do not trust one
+cell in isolation.
 </Warning>
 
 ## Replace during fill
