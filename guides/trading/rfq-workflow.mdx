@@ -7,6 +7,29 @@ Request-for-quote is the primary way institutional flow executes on the platform
 
 ## The flow
 
+```mermaid
+sequenceDiagram
+    participant Y as You
+    participant T as Trillion Digital
+    participant D as Liquidity providers
+
+    Y->>T: QuoteRequest (Symbol, OrderQty, Currency)
+    T->>D: poll for prices
+    D-->>T: prices
+    T-->>Y: Quote (BidPx / OfferPx, ValidUntilTime)
+
+    Note over Y,T: Firm inside the window
+
+    alt Accept
+        Y->>T: NewOrderSingle OrdType=RFQ (RFQID, QuoteID)
+        T-->>Y: ExecutionReport ExecType=Trade
+        T-->>Y: QuoteStatus = Filled
+    else Let it lapse
+        T-->>Y: QuoteStatus = Canceled (EndTime reached)
+    end
+```
+
+
 <Steps>
   <Step title="Request">
     Specify the instrument, the quantity, and which currency the quantity is

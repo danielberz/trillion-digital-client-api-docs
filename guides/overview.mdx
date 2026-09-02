@@ -14,6 +14,25 @@ integrate programmatically, go to the
 
 ## The lifecycle
 
+```mermaid
+flowchart LR
+    A[Onboard<br/>KYC/KYB, entity] --> B[Register destinations<br/>bank accounts, wallets]
+    B --> C[Fund<br/>fiat or crypto in]
+    C --> D[Trade<br/>desk · chat · portal · API]
+    D --> E[Confirm<br/>trade confirmation]
+    E --> F[Settle<br/>both legs on value date]
+    F --> G[Reconcile<br/>balances update]
+    G --> D
+```
+
+<Warning>
+Registering destinations sits **before** funding for a reason. Screening and
+approval take time, and a trade cannot settle to a destination that has not
+cleared. Leaving it until a trade is already executing is the single most common
+cause of a delayed settlement.
+</Warning>
+
+
 <Steps>
   <Step title="Onboard">
     Entity verification, KYC/KYB on beneficial owners, and account opening. See

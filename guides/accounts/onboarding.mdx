@@ -6,6 +6,25 @@ description: "Entity verification, KYC/KYB, and account approval."
 Onboarding establishes who you are, who ultimately owns and controls the entity,
 and which Trillion Digital entity you will face. It must complete before trading.
 
+```mermaid
+flowchart LR
+    A[Commercial<br/>discussion] --> B[Entity documents<br/>and ownership]
+    B --> C[Individual<br/>verification]
+    C --> D[Source of funds<br/>and wealth]
+    D --> E[Screening<br/>sanctions · PEP · adverse media]
+    E -->|clears| F[Approved]
+    E -->|query| G[Further<br/>information requested]
+    G --> E
+    F --> H[Account provisioned<br/>users invited]
+    H --> I[Periodic review<br/>risk-based cycle]
+    I --> E
+```
+
+<Note>
+Screening is a loop, not a gate you pass once. The same checks run on a
+risk-based cycle for the life of the relationship.
+</Note>
+
 ## What is collected
 
 <AccordionGroup>

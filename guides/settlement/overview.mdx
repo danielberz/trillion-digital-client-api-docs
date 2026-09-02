@@ -83,6 +83,27 @@ assuming — a missed cut-off on a Friday can mean settlement on Monday.
 
 ## Tracking settlement
 
+```mermaid
+stateDiagram-v2
+    [*] --> PendingApproval: instruction raised
+    PendingApproval --> PendingTransfer: approved
+    PendingApproval --> Rejected: refused
+    PendingApproval --> Canceled: cancellable HERE only
+    PendingTransfer --> Completed: settled
+    PendingTransfer --> Rejected: failed in transit
+    Completed --> [*]
+    Rejected --> [*]
+    Canceled --> [*]
+```
+
+<Warning>
+`PendingApproval` is the **only** cancellable state. Once an instruction reaches
+`PendingTransfer` it is with the rail and can no longer be recalled through the
+platform — and for an on-chain transfer, once broadcast it cannot be recalled by
+anyone.
+</Warning>
+
+
 Settlement progress is visible in the platform and, over the API, on the
 [`BalanceTransaction`](/trading-api/websocket/streams/balance) stream:
 

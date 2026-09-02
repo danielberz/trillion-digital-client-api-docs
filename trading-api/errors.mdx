@@ -107,6 +107,35 @@ failing; retrying with a *new* one risks duplicating a live order. Query the
 order's state first.
 </Note>
 
+## Should you retry?
+
+```mermaid
+flowchart TD
+    A[Request failed or no response] --> B{Did you get a response?}
+    B -->|No — timeout or disconnect| C[Do NOT resubmit]
+    C --> D[Subscribe to Order filtered by your ClOrdID]
+    D --> E{Order exists?}
+    E -->|Yes| F[Continue from its state]
+    E -->|No| G[Safe to resubmit, same ClOrdID]
+
+    B -->|Yes| H{Which layer?}
+    H -->|5xx or network| I[Retry with backoff + jitter<br/>reuse the same ClOrdID]
+    H -->|429| J[Wait, then retry]
+    H -->|401 / 403| K[Fix credentials or signing<br/>retrying will not help]
+    H -->|Business rejection| L{Reason}
+    L -->|Duplicate*| M[Already accepted — query, never resubmit]
+    L -->|OrderExceedsLimit| N[Reduce size or free credit]
+    L -->|Increment / symbol| O[Fix the request]
+    L -->|InternalError| P[Retry with a NEW ClOrdID]
+```
+
+<Warning>
+The left branch is the expensive one. A disconnect between sending
+`NewOrderSingle` and receiving its `ExecutionReport` leaves the outcome
+**unknown** — the order may well have been accepted. Resubmitting can double your
+position. Always reconcile before retrying an order.
+</Warning>
+
 ## Retry guidance
 
 <Steps>

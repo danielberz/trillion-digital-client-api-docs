@@ -36,6 +36,39 @@ instruction registered against one is not visible to the other. Confirm which
 account you are operating on before instructing a transfer.
 </Warning>
 
+## Working with more than one entity
+
+Groups that trade through two Trillion Digital entities should expect to run them
+as genuinely separate relationships.
+
+<AccordionGroup>
+  <Accordion title="Credentials">
+    API keys are issued per entity account. A key issued against one will not
+    read or trade the other, and there is no cross-entity view over the API —
+    aggregate on your side.
+  </Accordion>
+  <Accordion title="Settlement destinations">
+    Bank accounts and whitelisted wallets are registered per entity. Registering
+    a destination once does not make it available to the other account, even
+    though it is the same underlying account in the same name.
+  </Accordion>
+  <Accordion title="Balances and credit">
+    Balances do not net across entities, and a credit line extended to one is not
+    headroom for the other.
+  </Accordion>
+  <Accordion title="Reporting">
+    Statements and confirmations are issued per entity. Consolidated reporting is
+    your side of the boundary.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+The failure mode is quiet rather than loud: an instruction submitted against the
+wrong entity account usually fails validation for a destination that "obviously
+exists" — because it exists on the *other* account. Check which account you are
+operating on before assuming a registration problem.
+</Warning>
+
 ## On confirmations and statements
 
 The facing entity is stated on every trade confirmation. If a confirmation shows

@@ -40,6 +40,30 @@ example, a rail transfer addressed to your own account is refused outright with
 `SELF_TRANSFER_NOT_ALLOWED` — that move has to be a book transfer instead.
 </Warning>
 
+## Which rail will my payment take?
+
+```mermaid
+flowchart TD
+    A[Payment to instruct] --> B{Same holder,<br/>same institution?}
+    B -->|Yes| C[Book transfer<br/>effectively immediate]
+    B -->|No| D{Beneficiary banks<br/>at the same institution?}
+    D -->|Yes| E[Internal network<br/>rail address / UUID / email]
+    D -->|No| F{Same country<br/>as the payer?}
+    F -->|Yes, US| G[Fedwire same-day<br/>ACH cheaper, slower<br/>FedNow / RTP instant]
+    F -->|Yes, other| H[Local domestic rail<br/>EFT · Bre-B · Fast Pay]
+    F -->|No| I{Currency}
+    I -->|EUR| J[SEPA]
+    I -->|GBP| K[CHAPS · Faster Payments · BACS]
+    I -->|MXN| L[SPEI — CLABE]
+    I -->|Other| M[SWIFT<br/>intermediary may be required]
+```
+
+<Note>
+You do not pick the rail yourself. It falls out of the beneficiary you register
+and the currency you settle in — which is why getting the registration right
+matters more than anything you do at instruction time.
+</Note>
+
 ## Internal settlement networks
 
 When your beneficiary banks at the same institution we do, the payment can move

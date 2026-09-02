@@ -5,6 +5,24 @@ description: "On-chain transfers, networks, and confirmations."
 
 Crypto settles on-chain to whitelisted wallet addresses.
 
+```mermaid
+flowchart TD
+    A[Withdrawal requested] --> B{Destination<br/>whitelisted?}
+    B -->|No| C[Refused — register<br/>and screen first]
+    B -->|Yes| D[PendingApproval<br/>cancellable]
+    D --> E[PendingTransfer<br/>broadcast to network]
+    E --> F[Awaiting confirmations]
+    F --> G[Completed<br/>TxHash available]
+    D --> H[Rejected]
+    E -.->|cannot be recalled<br/>by anyone| G
+```
+
+<Warning>
+Note where cancellation stops being possible. Once a transaction is broadcast it
+is beyond the platform's control **and beyond anyone's** — that is a property of
+the blockchain, not a limitation we could lift.
+</Warning>
+
 ## Before you can settle
 
 Every destination address must be
@@ -48,6 +66,24 @@ Transfers progress through:
 
 Once broadcast, a transaction hash is available for independent verification on a
 block explorer.
+
+<Tip>
+The `TxHash` is the one piece of evidence neither side controls. If a transfer is
+disputed, quoting it settles the question faster than any amount of describing
+what your system believes happened.
+</Tip>
+
+### Why thresholds differ
+
+Confirmation counts are not arbitrary. Each chain offers different settlement
+assurance per block, so the threshold reflects how long it takes for a
+reorganisation to become implausible on that network. A chain with fast blocks
+typically needs more of them to reach the same confidence as a chain with slow
+ones.
+
+This is why a transfer on one network credits in minutes and another takes
+longer, even for the same nominal value — and why the number is set per asset and
+network rather than globally.
 
 <Note>
 Only `PendingApproval` transfers can be cancelled. Once a transaction is broadcast

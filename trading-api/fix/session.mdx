@@ -10,6 +10,34 @@ below as the `<MessageHeader>` and `<MessageTrailer>` rows.
 
 Examples on this page use `^A` for the ASCII 01 (SOH) field delimiter.
 
+```mermaid
+sequenceDiagram
+    participant C as Your engine (initiator)
+    participant T as Trillion Digital (acceptor)
+
+    C->>T: Logon 35=A (554 key, 96 signature, 95 length)
+    T-->>C: Logon 35=A (accepted)
+
+    loop Session established
+        C->>T: Heartbeat 35=0
+        T-->>C: Heartbeat 35=0
+        Note over C,T: Test Request 35=1 forces a Heartbeat<br/>carrying the matching TestReqID
+    end
+
+    Note over C,T: On a sequence gap
+    T-->>C: Resend Request 35=2 (BeginSeqNo, EndSeqNo)
+    C->>T: retransmit with PossDupFlag 43=Y,<br/>or Sequence Reset 35=4
+
+    C->>T: Logout 35=5
+    T-->>C: Logout 35=5
+```
+
+<Warning>
+Logout is not neutral. Orders submitted on this session are cancelled on
+disconnect unless each one carried `CancelOnDisconnect` (20030) = `N` — see
+[Cancel on Disconnect](/trading-api/fix/overview#cancel-on-disconnect).
+</Warning>
+
 ## Logon (35=A)
 
 FIX sessions authenticate once, at logon. The signature travels in the Logon

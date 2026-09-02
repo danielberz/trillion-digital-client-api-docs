@@ -11,6 +11,19 @@ than under time pressure on a settlement date.
 
 ## How an account is registered
 
+```mermaid
+flowchart LR
+    A[Account manager<br/>issues invite link] --> B[One-time passcode]
+    B --> C[Rail-specific form]
+    C --> D[Validation<br/>and screening]
+    D -->|clears| E[approved]
+    D -->|fails| F[rejected<br/>reason recorded]
+    E --> G[active<br/>usable for settlement]
+    F -.->|resubmit| C
+```
+
+
+
 Bank details are usually collected through a **secure invitation link** rather
 than by email, so account numbers never sit in a mailbox.
 

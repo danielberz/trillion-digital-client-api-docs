@@ -7,6 +7,25 @@ The WebSocket connection is long-lived. Everything except the initial HTTP
 handshake — subscriptions, order entry, transfers — happens as JSON messages over
 that one socket.
 
+```mermaid
+stateDiagram-v2
+    [*] --> Connecting: sign with a FRESH timestamp
+    Connecting --> Authenticated: hello received
+    Connecting --> Backoff: handshake rejected (401)
+    Authenticated --> Subscribed: replay every subscription
+    Subscribed --> Subscribed: data, Pong
+    Subscribed --> Backoff: close event
+    Subscribed --> Backoff: no traffic within timeout (half-open)
+    Backoff --> Connecting: exponential delay + jitter
+```
+
+<Note>
+Two transitions do the work that naive clients miss: **re-signing on every
+attempt** (a cached signature is already expired) and the **half-open path**,
+where no close event ever fires and only your own timeout detects the dead
+socket.
+</Note>
+
 ## Connecting
 
 Open a WebSocket to `/ws/v1` with the three authentication headers from

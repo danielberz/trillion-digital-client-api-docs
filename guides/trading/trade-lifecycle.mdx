@@ -5,6 +5,27 @@ description: "From execution through confirmation to settlement."
 
 ## Stages
 
+```mermaid
+flowchart TD
+    A[Execution<br/>economics fixed] --> B[Booking<br/>TradeID assigned]
+    B --> C{TradeStatus}
+    C -->|Pending| D[Awaiting confirmation]
+    D --> E[Confirmed]
+    C -->|Confirmed| E
+    E --> F[Settlement<br/>both legs move]
+    F --> G[Reconciliation<br/>balances update]
+    C -->|Canceled| H[Will not settle]
+    E -.->|can still move| H
+```
+
+<Warning>
+Note the dashed edge. A trade can move to `Canceled` **after** appearing as
+`Confirmed`. Any system that records the first message it sees as final will
+carry cancelled trades on its books indefinitely — key on `TradeID` and always
+apply the latest status.
+</Warning>
+
+
 <Steps>
   <Step title="Execution">
     The trade is struck — on acceptance of a quote, or when an order fills.

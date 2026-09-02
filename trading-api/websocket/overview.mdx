@@ -70,23 +70,77 @@ See [Commands](/trading-api/websocket/commands) for payloads.
 
 ## A typical session
 
+```mermaid
+sequenceDiagram
+    participant C as Your client
+    participant T as Trillion Digital
+
+    C->>T: WebSocket connect (ApiKey, ApiTimestamp, ApiSign)
+    T-->>C: hello (session_id)
+
+    Note over C,T: Subscribe before you trade
+    C->>T: subscribe Security, Currency
+    T-->>C: initial snapshot
+    C->>T: subscribe ExecutionReport, Trade (StartDate = last processed)
+    C->>T: subscribe MarketDataSnapshot (Symbol, Throttle)
+    T-->>C: streaming prices
+
+    Note over C,T: Trade
+    C->>T: NewOrderSingle (ClOrdID)
+    T-->>C: ExecutionReport ExecType=PendingNew
+    T-->>C: ExecutionReport ExecType=New
+    T-->>C: ExecutionReport ExecType=Trade (fill)
+    T-->>C: Trade (post-trade detail, fees)
+```
+
+## The order workflow
+
+This is the sequence the platform documentation prescribes. Steps 2 and 3 are
+the recovery mechanism — they are what makes a restart safe.
+
 <Steps>
-  <Step title="Connect and authenticate">
-    Open the socket with signed headers, wait for `hello`.
+  <Step title="Subscribe to MarketDataSnapshot">
+    For the securities you intend to trade.
   </Step>
-  <Step title="Load reference data">
-    Subscribe to `Security` and `Currency` to learn what is tradeable and at what
-    precision.
+  <Step title="Subscribe to ExecutionReport with StartDate">
+    Set `StartDate` to the `Timestamp` of the **last ExecutionReport you
+    processed**, to recover order state across a restart.
   </Step>
-  <Step title="Subscribe to your own activity">
-    Subscribe to `Order`, `ExecutionReport`, `Trade`, and `Balance` **before**
-    trading, so no result is missed.
+  <Step title="Subscribe to Trade with StartDate">
+    Same technique, to recover any trades missed while you were disconnected.
   </Step>
-  <Step title="Subscribe to prices">
-    Subscribe to `MarketDataSnapshot` for the symbols you care about, optionally
-    throttled.
+  <Step title="Maintain a map of open orders">
+    Keyed by `OrderID`, holding the last `ExecutionReport` received for it.
   </Step>
-  <Step title="Trade">
-    Send commands. Consume the outcomes on the streams you already opened.
+  <Step title="Maintain a set of pending ClOrdIDs">
+    One entry per in-flight request, so you can correlate the response.
+  </Step>
+  <Step title="Submit">
+    Generate a fresh `ClOrdID` and send
+    [`NewOrderSingle`](/trading-api/websocket/commands#neworldersingle).
+  </Step>
+  <Step title="Correlate the response">
+    It arrives on `ExecutionReport` carrying your `ClOrdID`. `ExecType=PendingNew`
+    means accepted — add it to your open-order map.
+  </Step>
+  <Step title="Amend or cancel">
+    Generate a **new** `ClOrdID` and send `OrderCancelRequest` or
+    `OrderCancelReplaceRequest`, referencing `OrigClOrdID` from the previous
+    successful request.
+  </Step>
+  <Step title="Consume fills">
+    Fills arrive as `ExecutionReport` with `ExecType=Trade`.
   </Step>
 </Steps>
+
+<Warning>
+`ClOrdID` must be unique **daily** and across any open order, and the
+specification states it must be under 36 characters. Note that the platform's
+own examples use 36-character hyphenated UUID4s, so the boundary is ambiguous —
+a UUID4 with hyphens stripped (32 characters) is unambiguously safe.
+</Warning>
+
+<Note>
+The order API broadly follows FIX semantics, with differences documented in the
+[order state matrices](/trading-api/fix/state-matrices).
+</Note>

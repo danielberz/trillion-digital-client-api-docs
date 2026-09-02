@@ -15,6 +15,38 @@ structure — subscribe to both.
 `ExecType` to know what just happened.
 </Note>
 
+## Order state
+
+Drive your state machine from `OrdStatus`.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PendingNew: NewOrderSingle
+    PendingNew --> New: accepted
+    PendingNew --> Rejected: OrdRejReason
+    New --> PartiallyFilled: ExecType=Trade
+    PartiallyFilled --> PartiallyFilled: further fills
+    PartiallyFilled --> Filled: LeavesQty reaches 0
+    New --> Filled: filled in one execution
+    New --> PendingCancel: OrderCancelRequest
+    PartiallyFilled --> PendingCancel: OrderCancelRequest
+    PendingCancel --> Canceled: accepted
+    PendingCancel --> New: CancelRejected
+    New --> PendingReplace: OrderCancelReplaceRequest
+    PendingReplace --> New: Replaced
+    PendingReplace --> New: ReplaceRejected
+    Filled --> [*]
+    Canceled --> [*]
+    Rejected --> [*]
+```
+
+<Warning>
+An order in `PendingCancel` is **still live and still fillable**. The cancel is a
+request, not an instruction — until `ExecType=Canceled` arrives, the order can
+trade. Treating `PendingCancel` as terminal and releasing the hedge is a
+recognised way to end up unintentionally long or short.
+</Warning>
+
 ## Subscribe
 
 ```json

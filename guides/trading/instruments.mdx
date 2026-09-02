@@ -50,6 +50,34 @@ which increment applies depends on the currency you expressed the order in.
 Round before submitting.
 </Warning>
 
+### A worked example
+
+Take a security with `MinSizeIncrement: "0.00000001"`, `MinAmtIncrement: "0.01"`,
+and `MinPriceIncrement: "0.01"`.
+
+| You want | Currency | Valid? | Why |
+| --- | --- | --- | --- |
+| `0.12345678` | BTC | ✅ | A whole multiple of the size increment |
+| `0.123456789` | BTC | ❌ | Nine decimals; the increment allows eight |
+| `50000.00` | USD | ✅ | A whole multiple of the amount increment |
+| `50000.005` | USD | ❌ | Half a cent; the amount increment is `0.01` |
+
+The trap is that the *same order* can be valid expressed one way and invalid the
+other. `Currency` decides which increment the platform validates against.
+
+<Tip>
+Round toward zero rather than to nearest. Rounding up can push an order past the
+balance or credit headroom you just checked, turning an increment problem into an
+`OrderExceedsLimit` rejection instead.
+</Tip>
+
+### Precision and floats
+
+Every quantity, price, and increment arrives as a **string**. Compute in a
+decimal type, never in a binary float — `0.1 + 0.2` is famously not `0.3` in
+IEEE-754, and an order quantity that is off by one unit in the last place is
+rejected just as firmly as one that is wildly wrong.
+
 ## Settlement currency
 
 An instrument's settlement currency is not always its quote currency. Check

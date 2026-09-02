@@ -26,6 +26,21 @@ eventually use both, for different jobs.
   </Card>
 </CardGroup>
 
+## Pick one
+
+```mermaid
+flowchart TD
+    A[What are you building?] --> B{Does it price,<br/>quote, or execute?}
+    B -->|Yes| C{Needs live prices<br/>or fills as they happen?}
+    C -->|Yes| D[Trading API<br/>WebSocket]
+    C -->|No — historical only| E[Trading API<br/>REST]
+    B -->|No| F{Existing FIX<br/>infrastructure?}
+    F -->|Yes| G[Trading API<br/>FIX 4.4]
+    F -->|No| H{Accounts, settlement,<br/>transfers, reporting?}
+    H -->|Yes| I[Platform API<br/>in design]
+    H -->|No| J[Knowledge Center<br/>probably not an API question]
+```
+
 ## The dividing line
 
 A trade is agreed in seconds and settles over hours or days. The Trading API
