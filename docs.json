@@ -15,161 +15,166 @@
     "href": "https://trilliondigital.io"
   },
   "navigation": {
-    "tabs": [
+    "versions": [
       {
-        "tab": "Knowledge Center",
-        "groups": [
+        "version": "Latest",
+        "tabs": [
           {
-            "group": "Get started",
-            "pages": [
-              "index",
-              "choosing-an-api",
-              "guides/overview",
-              "guides/getting-started"
-            ]
-          },
-          {
-            "group": "Accounts",
-            "pages": [
-              "guides/accounts/onboarding",
-              "guides/accounts/entities",
-              "guides/accounts/users-and-roles"
-            ]
-          },
-          {
-            "group": "Trading",
-            "pages": [
-              "guides/trading/how-otc-trading-works",
-              "guides/trading/rfq-workflow",
-              "guides/trading/instruments",
-              "guides/trading/trade-lifecycle"
-            ]
-          },
-          {
-            "group": "Settlement",
-            "pages": [
-              "guides/settlement/overview",
-              "guides/settlement/fiat",
-              "guides/settlement/crypto",
-              "guides/settlement/settlement-instructions",
-              "guides/settlement/wallet-whitelisting"
-            ]
-          },
-          {
-            "group": "Compliance & security",
-            "pages": [
-              "guides/compliance/kyc-kyb",
-              "guides/compliance/security"
-            ]
-          },
-          {
-            "group": "Support",
-            "pages": [
-              "guides/support/contact",
-              "guides/support/faq"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Trading API",
-        "groups": [
-          {
-            "group": "Get started",
-            "pages": [
-              "trading-api/overview",
-              "trading-api/quickstart",
-              "trading-api/environments"
-            ]
-          },
-          {
-            "group": "Using the API",
-            "pages": [
-              "trading-api/authentication",
-              "trading-api/connection-lifecycle",
-              "trading-api/errors"
-            ]
-          },
-          {
-            "group": "WebSocket API",
-            "pages": [
-              "trading-api/websocket/overview",
-              "trading-api/websocket/subscriptions",
-              "trading-api/websocket/commands",
-              "trading-api/websocket/order-strategies",
+            "tab": "Knowledge Center",
+            "groups": [
               {
-                "group": "Streams",
+                "group": "Get started",
                 "pages": [
-                  "trading-api/websocket/streams/market-data-snapshot",
-                  "trading-api/websocket/streams/security",
-                  "trading-api/websocket/streams/currency",
-                  "trading-api/websocket/streams/quote",
-                  "trading-api/websocket/streams/order",
-                  "trading-api/websocket/streams/trade",
-                  "trading-api/websocket/streams/balance",
-                  "trading-api/websocket/streams/credit"
+                  "index",
+                  "choosing-an-api",
+                  "guides/overview",
+                  "guides/getting-started"
+                ]
+              },
+              {
+                "group": "Accounts",
+                "pages": [
+                  "guides/accounts/onboarding",
+                  "guides/accounts/entities",
+                  "guides/accounts/users-and-roles"
+                ]
+              },
+              {
+                "group": "Trading",
+                "pages": [
+                  "guides/trading/how-otc-trading-works",
+                  "guides/trading/rfq-workflow",
+                  "guides/trading/instruments",
+                  "guides/trading/trade-lifecycle"
+                ]
+              },
+              {
+                "group": "Settlement",
+                "pages": [
+                  "guides/settlement/overview",
+                  "guides/settlement/fiat",
+                  "guides/settlement/crypto",
+                  "guides/settlement/settlement-instructions",
+                  "guides/settlement/wallet-whitelisting"
+                ]
+              },
+              {
+                "group": "Compliance & security",
+                "pages": [
+                  "guides/compliance/kyc-kyb",
+                  "guides/compliance/security"
+                ]
+              },
+              {
+                "group": "Support",
+                "pages": [
+                  "guides/support/contact",
+                  "guides/support/faq"
                 ]
               }
             ]
           },
           {
-            "group": "REST API",
-            "pages": [
-              "trading-api/rest/overview",
-              "trading-api/rest/endpoints"
+            "tab": "Trading API",
+            "groups": [
+              {
+                "group": "Get started",
+                "pages": [
+                  "trading-api/overview",
+                  "trading-api/quickstart",
+                  "trading-api/environments"
+                ]
+              },
+              {
+                "group": "Using the API",
+                "pages": [
+                  "trading-api/authentication",
+                  "trading-api/connection-lifecycle",
+                  "trading-api/errors"
+                ]
+              },
+              {
+                "group": "WebSocket API",
+                "pages": [
+                  "trading-api/websocket/overview",
+                  "trading-api/websocket/subscriptions",
+                  "trading-api/websocket/commands",
+                  "trading-api/websocket/order-strategies",
+                  {
+                    "group": "Streams",
+                    "pages": [
+                      "trading-api/websocket/streams/market-data-snapshot",
+                      "trading-api/websocket/streams/security",
+                      "trading-api/websocket/streams/currency",
+                      "trading-api/websocket/streams/quote",
+                      "trading-api/websocket/streams/order",
+                      "trading-api/websocket/streams/trade",
+                      "trading-api/websocket/streams/balance",
+                      "trading-api/websocket/streams/credit"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "REST API",
+                "pages": [
+                  "trading-api/rest/overview",
+                  "trading-api/rest/endpoints"
+                ]
+              },
+              {
+                "group": "FIX API",
+                "pages": [
+                  "trading-api/fix/overview",
+                  "trading-api/fix/session",
+                  "trading-api/fix/market-data",
+                  "trading-api/fix/orders",
+                  "trading-api/fix/security-list",
+                  "trading-api/fix/strategies",
+                  "trading-api/fix/state-matrices",
+                  "trading-api/fix/examples"
+                ]
+              },
+              {
+                "group": "SDKs & samples",
+                "pages": [
+                  "trading-api/sdks/python",
+                  "trading-api/sdks/typescript",
+                  "trading-api/sdks/postman"
+                ]
+              }
             ]
           },
           {
-            "group": "FIX API",
-            "pages": [
-              "trading-api/fix/overview",
-              "trading-api/fix/session",
-              "trading-api/fix/market-data",
-              "trading-api/fix/orders",
-              "trading-api/fix/security-list",
-              "trading-api/fix/strategies",
-              "trading-api/fix/state-matrices",
-              "trading-api/fix/examples"
+            "tab": "Platform API",
+            "groups": [
+              {
+                "group": "Introduction",
+                "pages": [
+                  "platform-api/overview"
+                ]
+              },
+              {
+                "group": "Conventions",
+                "pages": [
+                  "platform-api/authentication",
+                  "platform-api/versioning",
+                  "platform-api/idempotency",
+                  "platform-api/pagination",
+                  "platform-api/errors"
+                ]
+              }
             ]
           },
           {
-            "group": "SDKs & samples",
-            "pages": [
-              "trading-api/sdks/python",
-              "trading-api/sdks/typescript",
-              "trading-api/sdks/postman"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Platform API",
-        "groups": [
-          {
-            "group": "Introduction",
-            "pages": [
-              "platform-api/overview"
-            ]
-          },
-          {
-            "group": "Conventions",
-            "pages": [
-              "platform-api/authentication",
-              "platform-api/versioning",
-              "platform-api/idempotency",
-              "platform-api/pagination",
-              "platform-api/errors"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Changelog",
-        "groups": [
-          {
-            "group": "Changelog",
-            "pages": [
-              "changelog"
+            "tab": "Changelog",
+            "groups": [
+              {
+                "group": "Changelog",
+                "pages": [
+                  "changelog"
+                ]
+              }
             ]
           }
         ]
@@ -194,7 +199,9 @@
     }
   },
   "contextual": {
+    "display": "header",
     "options": [
+      "assistant",
       "copy",
       "view",
       "chatgpt",

@@ -1,13 +1,70 @@
 ---
-title: "Trillion Digital"
+title: "Build with Trillion Digital"
 sidebarTitle: "Home"
-description: "Institutional OTC trading for digital assets — platform guides and API reference."
-mode: "wide"
+description: "Explore the documentation and learn how to integrate with our OTC trading and settlement infrastructure."
+mode: "custom"
 ---
 
-Trillion Digital provides institution-grade OTC trading, settlement, and treasury
-infrastructure for digital assets. This site covers how the platform works and how
-to integrate with it programmatically.
+<div className="td-hero">
+  <div className="td-hero-head">
+    <div>
+      <h1 className="td-hero-title">Build with Trillion Digital</h1>
+      <p className="td-hero-sub">
+        Explore the documentation and learn how to integrate with our OTC
+        trading and settlement infrastructure.
+      </p>
+    </div>
+    <a className="td-hero-cta" href="/trading-api/quickstart">Get started</a>
+  </div>
+
+  <div className="td-hero-art" role="img" aria-label="Abstract depth-of-market visualisation">
+    <svg viewBox="0 0 1200 420" preserveAspectRatio="none" aria-hidden="true">
+
+      <g className="td-grid" stroke="currentColor" strokeWidth="1">
+        <line x1="0" y1="105" x2="1200" y2="105" />
+        <line x1="0" y1="210" x2="1200" y2="210" />
+        <line x1="0" y1="315" x2="1200" y2="315" />
+        <line x1="200" y1="0" x2="200" y2="420" />
+        <line x1="400" y1="0" x2="400" y2="420" />
+        <line x1="600" y1="0" x2="600" y2="420" />
+        <line x1="800" y1="0" x2="800" y2="420" />
+        <line x1="1000" y1="0" x2="1000" y2="420" />
+      </g>
+
+      <path
+        fill="currentColor"
+        fillOpacity="0.18"
+        d="M0 420 L0 300 L80 300 L80 272 L160 272 L160 250 L240 250 L240 214 L320 214 L320 188 L400 188 L400 150 L480 150 L480 120 L560 120 L560 86 L600 86 L600 420 Z"
+      />
+      <path
+        fill="currentColor"
+        fillOpacity="0.10"
+        d="M1200 420 L1200 288 L1120 288 L1120 262 L1040 262 L1040 236 L960 236 L960 206 L880 206 L880 176 L800 176 L800 142 L720 142 L720 112 L640 112 L640 84 L600 84 L600 420 Z"
+      />
+
+      <path
+        className="td-edge"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        d="M0 300 L80 300 L80 272 L160 272 L160 250 L240 250 L240 214 L320 214 L320 188 L400 188 L400 150 L480 150 L480 120 L560 120 L560 86 L600 86"
+      />
+      <path
+        className="td-edge"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        d="M600 84 L640 84 L640 112 L720 112 L720 142 L800 142 L800 176 L880 176 L880 206 L960 206 L960 236 L1040 236 L1040 262 L1120 262 L1120 288 L1200 288"
+      />
+
+      <line className="td-mid" x1="600" y1="40" x2="600" y2="420" stroke="currentColor" strokeWidth="1" strokeDasharray="4 6" />
+    </svg>
+  </div>
+</div>
+
+<div className="td-home-body">
 
 <CardGroup cols={2}>
   <Card title="Knowledge Center" icon="book-open" href="/guides/overview">
@@ -15,12 +72,12 @@ to integrate with it programmatically.
     Start here if you are new.
   </Card>
   <Card title="Trading API" icon="bolt" href="/trading-api/overview">
-    Real-time market data, RFQ, order execution, and balances over WebSocket,
-    REST, and FIX. This is the API available today.
+    Market data, RFQ, order execution, and balances over WebSocket, REST, and
+    FIX. This is the API available today.
   </Card>
-  <Card title="Platform API" icon="code" href="/platform-api/overview">
-    Our first-party REST API for accounts, settlement, and reporting.
-    Currently in design — the contract is published for review.
+  <Card title="Platform API" icon="building-columns" href="/platform-api/overview">
+    Accounts, settlement instructions, transfers, and reporting. Currently in
+    design — the contract is published for review.
   </Card>
   <Card title="Changelog" icon="clock-rotate-left" href="/changelog">
     Platform and API changes, newest first.
@@ -40,7 +97,7 @@ reporting. If you are not sure which you need, start at
 <Steps>
   <Step title="Trade programmatically">
     Use the [Trading API](/trading-api/overview). Market data, RFQ, and order
-    execution run over a persistent WebSocket connection; historical data and
+    execution run over a persistent WebSocket connection; historical and
     reference data are available over REST. FIX 4.4 is supported for
     institutional order flow.
   </Step>
@@ -49,8 +106,8 @@ reporting. If you are not sure which you need, start at
     onboarding — see [Getting started](/guides/getting-started).
   </Step>
   <Step title="Reconcile and report">
-    Trade, balance, and settlement history are available over both the Trading
-    API and, once released, the [Platform API](/platform-api/overview).
+    Trade, balance, and settlement history are available over the Trading API
+    today, and over the [Platform API](/platform-api/overview) once released.
   </Step>
 </Steps>
 
@@ -64,3 +121,5 @@ and not interchangeable. Email
 Sandbox is a full-featured test environment with simulated liquidity. Always
 build and certify against sandbox before requesting production credentials.
 </Note>
+
+</div>

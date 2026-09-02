@@ -117,3 +117,117 @@ pre code {
 pre code .line {
   word-break: break-word;
 }
+
+/* ---------------------------------------------------------------------------
+ * Home page hero
+ *
+ * index.mdx uses `mode: "custom"`, which hands us a blank canvas — no sidebar,
+ * no table of contents, and no container padding. Everything below therefore
+ * has to establish its own layout.
+ * ------------------------------------------------------------------------- */
+
+.td-hero,
+.td-home-body {
+  max-width: 76rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.td-hero {
+  padding-top: 4rem;
+}
+
+.td-hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.td-hero-title {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  margin: 0;
+}
+
+.td-hero-sub {
+  margin: 0.875rem 0 0;
+  max-width: 34rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  opacity: 0.7;
+}
+
+/* Inverted button — the brand is monochrome, so the CTA reads as the negative
+ * of the page rather than as a colour. */
+.td-hero-cta {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  background: light-dark(#000, #fff);
+  color: light-dark(#fff, #000);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.td-hero-cta:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+/* The artwork inherits currentColor, so the whole illustration re-tints with
+ * the theme instead of needing a second asset. */
+.td-hero-art {
+  margin-top: 3rem;
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 3%, transparent);
+}
+
+.td-hero-art svg {
+  display: block;
+  width: 100%;
+  height: clamp(240px, 34vw, 420px);
+}
+
+.td-hero-art .td-grid {
+  opacity: 0.22;
+}
+
+.td-hero-art .td-edge {
+  opacity: 0.9;
+}
+
+.td-hero-art .td-mid {
+  opacity: 0.35;
+}
+
+.td-home-body {
+  padding-top: 4rem;
+  padding-bottom: 6rem;
+}
+
+/* The custom-mode canvas has no h2 context, so the section rules defined
+ * earlier would float against nothing. Re-establish spacing locally. */
+.td-home-body h2 {
+  margin-top: 3.5rem !important;
+}
+
+@media (max-width: 640px) {
+  .td-hero {
+    padding-top: 2.5rem;
+  }
+  .td-hero-cta {
+    order: 3;
+  }
+}

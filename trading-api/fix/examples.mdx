@@ -1,7 +1,7 @@
 ---
 title: "FIX examples"
 sidebarTitle: "Examples"
-description: "Verbatim FIX 4.4 wire samples for logon, security list, orders, and market data."
+description: "Published FIX 4.4 wire samples for logon, security list, orders, and market data, decoded tag by tag."
 ---
 
 Every sample below is reproduced as published in the Trillion Digital FIX
@@ -15,9 +15,9 @@ that appears in the sample but is not listed in that message's field table.
 **Do not use the published `BodyLength` (9) and `CheckSum` (10) as expected
 values.** Neither matches the bytes printed alongside it. In all eight samples
 the declared `9` is exactly 11 bytes short of the body that follows it, and no
-declared `10` is the checksum of the bytes shown — the `CompID` values were
-lengthened when the samples were transcribed into the specification and the
-framing fields were never recomputed.
+declared `10` is the checksum of the bytes shown. The uniform 11-byte gap across
+every sample points at a `CompID` value that was lengthened when the samples were
+transcribed into the specification, without the framing fields being recomputed.
 
 Compute both from your own bytes. A conformance test that asserts `9=143` on the
 Logon below will fail against a correct encoder, and against the real gateway.
@@ -50,8 +50,14 @@ per-message tables below.
 | `49` | SenderCompID | Y | Provided by Trillion Digital during onboarding |
 | `56` | TargetCompID | Y | Provided by Trillion Digital during onboarding |
 | `34` | MsgSeqNum | Y | |
+| `43` | PossDupFlag | N | Always required for retransmitted messages, whether prompted by the sending system or as the result of a resend request |
+| `97` | PossResend | N | Required when the message may be duplicate of another message sent under a different sequence number |
 | `52` | SendingTime | Y | |
+| `122` | OrigSendingTime | N | Required for a message re-sent as a result of a ResendRequest. If data is not available set to same value as `SendingTime` (52) |
 | `10` | CheckSum | Y | Three byte, simple checksum |
+
+None of the samples on this page is a retransmission, so `43`, `97` and `122` do
+not appear in them. Your decoder must still accept all three.
 
 ## Login
 
@@ -70,8 +76,11 @@ per-message tables below.
 | `554` | Password | Y | `Daniel` — the API key for the customer user |
 
 Tags `95` and `98` appear in the sample but are not listed in the Logon field
-table of the specification. See [FIX logon](/trading-api/fix/session) for the
-signature construction that produces `96`.
+table of the specification. The specification's reference implementation sets
+`95` from `RawDataLength.FIELD` to the character length of the base64 signature
+(`44` here); `98` is never named anywhere in the document. See
+[FIX session](/trading-api/fix/session) for the signature construction that
+produces `96`.
 
 ### Logon Response
 
@@ -119,7 +128,7 @@ sequence gap. Issuing a ResendRequest against it will stall the session.
 | Tag | Field | Req | Value |
 | --- | --- | --- | --- |
 | `35` | MsgType | Y | `y` — Security List |
-| `146` | NoRelatedSym | — | `2` — two `Instrument` blocks follow |
+| `146` | NoRelatedSym | | `2` — two `Instrument` blocks follow. The `<Instrument>` block itself is `Y if 560=0` |
 | → `55` | Symbol | Y | `ETH-USD`, then `BTC-USD` |
 | → `48` | SecurityID | Y | `2`, then `24` — internal Trillion Digital ID, for information only |
 | → `561` | RoundLot | Y | `0.00000001` on both — trading lot size |
@@ -128,7 +137,7 @@ sequence gap. Issuing a ResendRequest against it will stall the session.
 | → `1140` | MaxTradeVol | Y | `1000.00` on both — maximum size for an order |
 | `320` | SecurityReqID | Y | Echoes the request's `320` |
 | `322` | SecurityResponseID | Y | `1BQM22QR01G00` — identifier for this SecurityList message |
-| `560` | SecurityRequestResult | Y | `0` — Valid Request |
+| `560` | SecurityRequestResult | Y | `0` — Valid Request (`1` invalid or Unsupported Request, `2` No instruments found that match the selection criteria, `3` Not authorized to retrieve instrument data, `4` Instrument data temporarily unavailable, `5` Request for instrument data not supported) |
 
 <Note>
 The `Instrument` group is on the wire **before** `SecurityReqID` (320),
@@ -188,7 +197,7 @@ format `YYYYddmm-HH:MM:SS.ffffff` and always sends millisecond precision.
 | `17` | ExecID | Y | `ba22dbe1-cb33-4fcb-9613-921006afdebd` |
 | `37` | OrderID | Y | `94869628-b862-43e4-bd2d-be85e4295bd4` — assigned by Trillion Digital |
 | `38` | OrderQty | Y | `1.00000000` |
-| `39` | OrdStatus | Y | `8` — Rejected |
+| `39` | OrdStatus | Y | `8` — Rejected (`0` New, `1` Partially filled, `2` Filled, `3` Done for day, `4` Canceled, `6` Pending Cancel, `A` Pending New, `E` Pending Replace) |
 | `40` | OrdType | Y | `2` — Limit |
 | `44` | Price | N | `1630.123` |
 | `54` | Side | Y | `2` — Sell |
@@ -196,11 +205,11 @@ format `YYYYddmm-HH:MM:SS.ffffff` and always sends millisecond precision.
 | `58` | Text | N | `Unable to submit market order - please try again later.` |
 | `59` | TimeInForce | Y | `1` — Good Till Cancel |
 | `60` | TransactTime | N | `20220915-14:30:01.000` |
-| `103` | OrdRejReason | N | `0` — Broker / Exchange option |
-| `150` | ExecType | Y | `8` — Rejected |
+| `103` | OrdRejReason | N | `0` — Broker / Exchange option (`1` Unknown symbol, `2` Exchange closed, `3` Order exceeds limit, `5` Unknown order, `6` Duplicate Order, `7` Duplicate of a verbally communicated order, `8` Stale order). For optional use with `150=8` |
+| `150` | ExecType | Y | `8` — Rejected (`0` New, `3` Done for day, `4` Canceled, `5` Replaced, `6` Pending Cancel, `A` Pending New, `E` Pending Replace, `F` Trade) |
 | `151` | LeavesQty | Y | `1.00000000` |
 | `20030` | CancelOnDisconnect | N | `N` |
-| `20032` | DecisionStatus | N | `A` — Active |
+| `20032` | DecisionStatus | N | `A` — Active, the default (`P` Paused, `U` Pending Pause, `R` Pending Resume, `W` Waiting for StartTime, `T` Waiting for Trigger) |
 
 <Warning>
 `LeavesQty` (151) is `1.00000000` on a message whose `OrdStatus` (39) is `8`
@@ -236,7 +245,7 @@ Branch on `OrdRejReason` (103), never on `Text`.
 | `265` | MDUpdateType | — | `0` — Full refresh |
 | `1070` | MDQuoteType | N | `1` — Tradeable, i.e. Firm (`0` Indicative) |
 | `146` | NoRelatedSym | — | `1` |
-| `55` | Symbol | Y | `ETH-USD` |
+| → `55` | Symbol | Y | `ETH-USD` — the currency pair to subscribe to |
 | `269` | MDEntryType | — | `0` Bid and `1` Offer requested |
 | `20020` | NoSizeBucketsSegments | N | `4` — four size buckets follow |
 | → `20021` | SizeBucket | Y | `1`, `2`, `5`, `10` |
