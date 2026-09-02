@@ -44,13 +44,16 @@ example, a rail transfer addressed to your own account is refused outright with
 
 ```mermaid
 flowchart TD
-    A[Payment to instruct] --> B{Same holder,<br/>same institution?}
+    S[Payment to instruct] --> Z{Currency and network<br/>enabled on YOUR entity?}
+    Z -->|No| Y[Not available<br/>speak to your account manager]
+    Z -->|Yes| B{Same holder,<br/>same institution?}
     B -->|Yes| C[Book transfer<br/>effectively immediate]
     B -->|No| D{Beneficiary banks<br/>at the same institution?}
     D -->|Yes| E[Internal network<br/>rail address / UUID / email]
-    D -->|No| F{Same country<br/>as the payer?}
-    F -->|Yes, US| G[Fedwire same-day<br/>ACH cheaper, slower<br/>FedNow / RTP instant]
-    F -->|Yes, other| H[Local domestic rail<br/>EFT · Bre-B · Fast Pay]
+    D -->|No| F{Domestic to<br/>the payer?}
+    F -->|US| G[Fedwire same-day<br/>ACH cheaper, slower<br/>FedNow / RTP instant]
+    F -->|Colombia| H1[Bre-B · Fast Pay · ACH Colombia<br/>COP]
+    F -->|Canada| H2[EFT]
     F -->|No| I{Currency}
     I -->|EUR| J[SEPA]
     I -->|GBP| K[CHAPS · Faster Payments · BACS]
@@ -74,14 +77,37 @@ correspondent-banking machinery is involved.
 Each network identifies the beneficiary its own way — **not** by routing number
 and account number.
 
-| Network | Rail | Beneficiary identified by |
+| Network | Currency | Beneficiary identified by |
 | --- | --- | --- |
-| **Erebor Network** | `erebor` | Rail address — `@handle`, or `@routing/account` such as `@044016018/987654321` |
-| **CUBIX Network** | `cubix` | Partner account UUID, plus account number |
-| **FVNet** | `fvnet` | Email, plus account number and bank details |
-| **Bitso** | `bitso` | Email. Mexico only |
-| **BitGo GoNetwork** | `bitgo` | Go Account ID |
-| **Intra-bank transfer** | `intra_bank` | Account number and email — an on-us transfer inside the beneficiary's bank |
+| **Erebor Network** | USD | Rail address — `@handle`, or `@routing/account` such as `@044016018/987654321` |
+| **CUBIX Network** | USD | Partner account UUID, plus account number |
+| **FVNet** | USD | Email, plus account number and bank details |
+| **Coinbase Network** | USD | Account identifier held at Coinbase |
+| **SoFi SEN** | USD | Account identifier held at SoFi |
+| **Anchorage Atlas** | USD | Account identifier held at Anchorage |
+| **At Banesco** (Banesco USA) | USD | Account number and email — an on-us transfer inside Banesco |
+| **BitGo GoNetwork** | USD | Go Account ID |
+| **Bitso** | **MXN** | Email. Mexico |
+
+<Note>
+**Internal networks are not all USD.** Most are — they exist to move dollars
+between customers of the same US institution without touching Fedwire — but
+Bitso settles Mexican pesos, and the network you use is therefore partly
+determined by the currency you are settling in, not only by where your
+beneficiary banks.
+</Note>
+
+<Note>
+Availability varies by entity and by which institutions you and your beneficiary
+bank with. Some of these are arranged through your account manager rather than
+self-registered. If a network you expect is not offered when you register a
+beneficiary, ask — it may be available on your account without appearing in the
+self-service form.
+</Note>
+
+Where a network is selectable on a settlement instruction it carries a rail code:
+`erebor`, `cubix`, `fvnet`, `bitso`, `bitgo`, and `intra_bank` — the last covering
+At Banesco and other on-us transfers inside a beneficiary's own bank.
 
 <Note>
 You do not normally choose the network. When you register a beneficiary, we
@@ -97,6 +123,36 @@ malformed or mistyped address cannot be edited afterwards; the registration has
 to be replaced. This is why we validate the format up front and why a beneficiary
 change is treated as a new registration rather than an edit — see
 [Settlement instructions](/guides/settlement/settlement-instructions).
+</Warning>
+
+## Currencies and the rails that carry them
+
+| Currency | Rails |
+| --- | --- |
+| **USD** | Fedwire, ACH, FedNow, RTP, SWIFT, plus every USD internal network |
+| **EUR** | SEPA, SWIFT |
+| **GBP** | CHAPS, Faster Payments, BACS, SWIFT |
+| **COP** | Bre-B, Fast Pay, ACH Colombia |
+| **MXN** | SPEI, Bitso |
+| **CAD** | EFT, SWIFT |
+| **SGD** | FAST, SWIFT |
+| **AUD** | NPP / PayID, SWIFT |
+| **JPY** | Zengin, SWIFT |
+
+<Warning>
+**Your entity determines which of these you can actually use.** Trillion Digital
+operates through separate regulated entities, each with its own banking partners,
+and a currency or network supported by the platform is not necessarily enabled on
+your account.
+
+A currency available through the US entity may be unavailable through the Swiss
+one and vice versa, and the same is true of internal networks — they depend
+entirely on which institutions your entity banks with. This is settled at
+onboarding, not at instruction time.
+
+Treat the tables on this page as **what the platform supports**, and your
+onboarding documentation as **what you can use**. Where they differ, your
+account manager is authoritative.
 </Warning>
 
 ## Domestic rails
