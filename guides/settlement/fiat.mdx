@@ -43,7 +43,7 @@ example, a rail transfer addressed to your own account is refused outright with
 ## Which rail will my payment take?
 
 ```mermaid
-flowchart TD
+flowchart LR
     S[Payment to instruct] --> Z{Currency and network<br/>enabled on YOUR entity?}
     Z -->|No| Y[Not available<br/>speak to your account manager]
     Z -->|Yes| B{Same holder,<br/>same institution?}

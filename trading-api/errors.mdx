@@ -110,7 +110,7 @@ order's state first.
 ## Should you retry?
 
 ```mermaid
-flowchart TD
+flowchart LR
     A[Request failed or no response] --> B{Did you get a response?}
     B -->|No — timeout or disconnect| C[Do NOT resubmit]
     C --> D[Subscribe to Order filtered by your ClOrdID]

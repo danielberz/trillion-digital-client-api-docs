@@ -29,7 +29,7 @@ eventually use both, for different jobs.
 ## Pick one
 
 ```mermaid
-flowchart TD
+flowchart LR
     A[What are you building?] --> B{Does it price,<br/>quote, or execute?}
     B -->|Yes| C{Needs live prices<br/>or fills as they happen?}
     C -->|Yes| D[Trading API<br/>WebSocket]

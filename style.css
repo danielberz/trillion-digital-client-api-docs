@@ -252,3 +252,32 @@ pre code .line {
     padding-inline: 1.5rem !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Diagrams
+ *
+ * Mermaid sizes each SVG to its own natural width and leaves it block-level, so
+ * a narrow state diagram (~510px) sits hard against the left edge of a 1194px
+ * content column and reads as stranded rather than placed. Centre it, give
+ * diagrams room to breathe, and let genuinely wide ones scroll inside their own
+ * container instead of pushing the page sideways.
+ * ------------------------------------------------------------------------- */
+/* The hairline panel makes a diagram read as a figure rather than as line art
+ * floating between two paragraphs. Deliberately subtle — the diagram is the
+ * content, the frame is only there to bound it. */
+.mermaid {
+  margin-block: 2.25rem;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  border-radius: 0.75rem;
+  padding: 1.75rem 1rem;
+  background: color-mix(in srgb, currentColor 2.5%, transparent);
+}
+
+.mermaid svg {
+  display: block;
+  margin-inline: auto;
+  max-width: 100%;
+  height: auto;
+}
+
