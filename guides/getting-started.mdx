@@ -1,0 +1,62 @@
+---
+title: "Getting started"
+description: "From first contact to first trade."
+---
+
+<Steps>
+  <Step title="Commercial discussion">
+    Scope of trading, instruments, expected volumes, and which Trillion Digital
+    entity you will face. Contact
+    [sales@trilliondigital.io](mailto:sales@trilliondigital.io) or your account
+    manager.
+  </Step>
+
+  <Step title="Onboarding and verification">
+    Entity documentation, beneficial ownership, and KYC/KYB checks. Timelines
+    depend on structure complexity and document turnaround. See
+    [Onboarding](/guides/accounts/onboarding).
+  </Step>
+
+  <Step title="Account activation">
+    Once approved, your trading account is provisioned and platform users are
+    invited by email. See [Users and roles](/guides/accounts/users-and-roles).
+  </Step>
+
+  <Step title="Register settlement details">
+    Provide bank details for fiat and whitelist wallet addresses for crypto.
+    **Do this before your first trade** — settlement cannot complete against
+    unregistered destinations. See
+    [Settlement instructions](/guides/settlement/settlement-instructions) and
+    [Wallet whitelisting](/guides/settlement/wallet-whitelisting).
+  </Step>
+
+  <Step title="Choose how you will trade">
+    <CardGroup cols={2}>
+      <Card title="Web terminal" icon="display">
+        Log in and trade manually. No development required.
+      </Card>
+      <Card title="API" icon="code" href="/trading-api/quickstart">
+        Programmatic access over WebSocket, REST, or FIX. Request sandbox
+        credentials and build against them first.
+      </Card>
+    </CardGroup>
+  </Step>
+
+  <Step title="Fund and trade">
+    Move funds in, request a quote, and trade. See
+    [Trade lifecycle](/guides/trading/trade-lifecycle).
+  </Step>
+</Steps>
+
+## If you are integrating
+
+Request **sandbox** API credentials from
+[support@trilliondigital.io](mailto:support@trilliondigital.io) as early as
+possible — sandbox access does not depend on your funding being in place, so
+development can run in parallel with onboarding.
+
+<Warning>
+Sandbox and production are entirely separate: separate credentials, separate
+data, separate hosts. Certify your integration against sandbox before requesting
+production keys. See [Environments](/trading-api/environments).
+</Warning>

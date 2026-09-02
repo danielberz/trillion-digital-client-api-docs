@@ -1,0 +1,97 @@
+---
+title: "MarketDataSnapshot"
+description: "Streaming bid and offer levels for a security."
+---
+
+Streams live price levels for one security. This is the primary market data
+stream.
+
+## Subscribe
+
+```json
+{
+  "reqid": 5,
+  "type": "subscribe",
+  "streams": [{ "name": "MarketDataSnapshot", "Symbol": "BTC-USD" }]
+}
+```
+
+### Parameters
+
+<ParamField body="Symbol" type="string" required>
+  Security to request.
+</ParamField>
+
+<ParamField body="Throttle" type="string">
+  Throttle duration for updates. A time duration plus units — `"300ms"`,
+  `"500us"`. Valid units are `ns`, `us`, `ms`, `s`. Defaults to the configured
+  `MinMarketDataThrottle`.
+</ParamField>
+
+<ParamField body="PriceIncrement" type="decimal">
+  Price increment for levels, to enable price bucketing.
+</ParamField>
+
+<ParamField body="Depth" type="decimal">
+  Maximum number of bid/offer levels to stream.
+</ParamField>
+
+<ParamField body="SizeBuckets" type="decimal[]">
+  Sizes to return price levels for. Defaults to the security's configured
+  `SizeBuckets`.
+</ParamField>
+
+<Tip>
+Set `Throttle` deliberately. Unthrottled majors can produce far more messages
+than a client needs, and the cost lands on your event loop. For a pricing display
+`"300ms"` is usually indistinguishable from raw; for execution logic, tighten it.
+</Tip>
+
+## Response
+
+```json
+{
+  "reqid": 5,
+  "type": "MarketDataSnapshot",
+  "ts": "2021-09-14T22:20:49.862930Z",
+  "initial": true,
+  "seq": 1,
+  "data": [
+    {
+      "Timestamp": "2021-09-14T22:20:49.860957Z",
+      "Symbol": "BTC-USD",
+      "Status": "Online",
+      "Bids": [
+        { "Price": "46817.27965000", "Size": "1.00000000" },
+        { "Price": "46816.08025000", "Size": "2.00000000" }
+      ],
+      "Offers": [
+        { "Price": "46868.59755873", "Size": "1.00000000" },
+        { "Price": "46870.33345500", "Size": "2.00000000" }
+      ]
+    }
+  ]
+}
+```
+
+<ResponseField name="Timestamp" type="datetime" required>Timestamp of the update.</ResponseField>
+<ResponseField name="Symbol" type="string" required>Security for the update.</ResponseField>
+<ResponseField name="Status" type="string" required>
+  `Online` or `Offline`. **Do not price off an `Offline` book** — treat it as
+  stale until it returns to `Online`.
+</ResponseField>
+<ResponseField name="Bids" type="object[]" required>
+  Full list of bid levels.
+  <Expandable title="level">
+    <ResponseField name="Price" type="decimal" required>Limit price of the level.</ResponseField>
+    <ResponseField name="Size" type="decimal" required>Size on this level.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="Offers" type="object[]" required>
+  Full list of offer levels. Same shape as `Bids`.
+</ResponseField>
+
+<Note>
+Each message carries the **full** list of levels, not a delta. Replace your local
+book rather than merging.
+</Note>

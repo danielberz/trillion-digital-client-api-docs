@@ -1,0 +1,84 @@
+---
+title: "Idempotency"
+description: "Making retries safe on writes."
+---
+
+<Warning>
+This API is in design and not yet available. See
+[Overview](/client-api/overview).
+</Warning>
+
+`POST` and `PATCH` requests accept an idempotency key so a retry cannot duplicate
+an action.
+
+```bash
+curl -X POST https://api.trilliondigital.io/settlements \
+  -H "Authorization: Bearer tdk_test_..." \
+  -H "Trillion-Idempotency-Key: settlement-2026-09-01-0042" \
+  -d '{ ... }'
+```
+
+## Behaviour
+
+<ResponseField name="First request">
+  Processed normally. The response is stored against the key.
+</ResponseField>
+<ResponseField name="Repeat with the same key and same body">
+  The stored response is replayed. The action does **not** happen twice. The
+  reply carries:
+
+  ```
+  Trillion-Idempotent-Replayed: true
+  ```
+</ResponseField>
+<ResponseField name="Repeat with the same key and a different body">
+  Rejected with `409 CONFLICT`. A key identifies one specific request, not a
+  slot to reuse.
+</ResponseField>
+<ResponseField name="On GET and DELETE">
+  Ignored — those verbs are already idempotent.
+</ResponseField>
+
+Responses are replayable for **72 hours**.
+
+## Choosing a key
+
+Use an identifier already unique to the operation in **your** system — a
+settlement instruction ID, an internal payment reference. Do not use a random
+UUID generated at call time.
+
+<Warning>
+A UUID generated immediately before the call defeats the entire mechanism. If the
+request times out and your process retries, it generates a *new* UUID, the server
+sees an unrelated request, and the action happens twice. Derive the key from
+something stable that survives a restart.
+</Warning>
+
+## The failure this prevents
+
+<Steps>
+  <Step title="You send a settlement instruction">
+    The request reaches us and is processed.
+  </Step>
+  <Step title="The response is lost">
+    A timeout, a dropped connection, a redeployed pod. You do not know whether it
+    succeeded.
+  </Step>
+  <Step title="You retry">
+    Without an idempotency key this is a second, independent instruction — funds
+    move twice. With one, the original response is replayed and nothing further
+    happens.
+  </Step>
+</Steps>
+
+<Note>
+Persist the idempotency key **before** making the request, alongside the pending
+operation. A key held only in memory is lost in exactly the crash scenario it
+exists to protect against.
+</Note>
+
+## Recovery
+
+If you have lost the response and are unsure of the outcome, retry with the same
+key rather than querying. The replay is authoritative and free of race
+conditions — a read-then-write check is not.

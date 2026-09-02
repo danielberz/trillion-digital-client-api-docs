@@ -1,0 +1,277 @@
+{
+  "info": {
+    "name": "Trillion Digital — Trading API (REST)",
+    "description": "REST endpoints for the Trillion Digital Trading API.\n\nSet `host`, `apiKey`, and `apiSecret` in the environment. The collection-level pre-request script generates a fresh ApiTimestamp and ApiSign before every request — signatures are timestamp-bound and cannot be reused.\n\nNOTE: This collection covers the REST surface only. Order entry, RFQ, and real-time data run over the WebSocket API, which a static collection cannot represent. See https://docs.trilliondigital.io/trading-api/websocket/overview",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Trillion Digital request signing.",
+          "// Builds: METHOD\\n<ApiTimestamp>\\n<host>\\n<path>[\\n<query>][\\n<body>]",
+          "// then HMAC-SHA256 with the API secret, URL-safe base64 (padding retained).",
+          "",
+          "const secret = pm.environment.get('apiSecret');",
+          "const key = pm.environment.get('apiKey');",
+          "const host = pm.environment.get('host');",
+          "",
+          "if (!secret || !key || !host) {",
+          "    throw new Error('Set host, apiKey and apiSecret in your Postman environment.');",
+          "}",
+          "",
+          "// ISO-8601 UTC with exactly six fractional digits.",
+          "const ts = new Date().toISOString().replace('Z', '000Z');",
+          "",
+          "const method = pm.request.method.toUpperCase();",
+          "const path = '/' + pm.request.url.path.join('/');",
+          "const query = pm.request.url.getQueryString({ ignoreDisabled: true });",
+          "const body = (pm.request.body && pm.request.body.raw) ? pm.request.body.raw : '';",
+          "",
+          "const parts = [method, ts, host, path];",
+          "if (query) { parts.push(query); }",
+          "if (body) { parts.push(body); }",
+          "",
+          "const payload = parts.join('\\n');",
+          "",
+          "const sign = CryptoJS.enc.Base64",
+          "    .stringify(CryptoJS.HmacSHA256(payload, secret))",
+          "    .replace(/\\+/g, '-')",
+          "    .replace(/\\//g, '_');",
+          "",
+          "pm.environment.set('apiTimestamp', ts);",
+          "pm.environment.set('apiSign', sign);"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://{{host}}",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Platform",
+      "item": [
+        {
+          "name": "Server time",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/v1/time", "host": ["{{baseUrl}}"], "path": ["v1", "time"] },
+            "description": "No parameters. The best first call to verify your signing implementation — a 200 here proves key, secret, timestamp format and signature construction are all correct."
+          }
+        },
+        {
+          "name": "Platform status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/v1/status", "host": ["{{baseUrl}}"], "path": ["v1", "status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reference data",
+      "item": [
+        {
+          "name": "Markets",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/v1/markets", "host": ["{{baseUrl}}"], "path": ["v1", "markets"] }
+          }
+        },
+        {
+          "name": "Currencies",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/v1/currencies", "host": ["{{baseUrl}}"], "path": ["v1", "currencies"] }
+          }
+        },
+        {
+          "name": "Counterparties",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/v1/counterparties", "host": ["{{baseUrl}}"], "path": ["v1", "counterparties"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Market data",
+      "item": [
+        {
+          "name": "OHLCV bars",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/symbols/BTC-USD/ohlcv/1D",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "symbols", "BTC-USD", "ohlcv", "1D"]
+            },
+            "description": "Historical bars. Replace BTC-USD and 1D with the symbol and resolution you need."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trading",
+      "item": [
+        {
+          "name": "Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/orders?StartDate=2026-01-01T00:00:00.000000Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "orders"],
+              "query": [{ "key": "StartDate", "value": "2026-01-01T00:00:00.000000Z" }]
+            }
+          }
+        },
+        {
+          "name": "Trades",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/trades?StartDate=2026-01-01T00:00:00.000000Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "trades"],
+              "query": [{ "key": "StartDate", "value": "2026-01-01T00:00:00.000000Z" }]
+            }
+          }
+        },
+        {
+          "name": "RFQs",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/v1/rfqs", "host": ["{{baseUrl}}"], "path": ["v1", "rfqs"] }
+          }
+        },
+        {
+          "name": "Quotes",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/v1/quotes", "host": ["{{baseUrl}}"], "path": ["v1", "quotes"] }
+          }
+        },
+        {
+          "name": "Trade allocations",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/v1/trade-allocations", "host": ["{{baseUrl}}"], "path": ["v1", "trade-allocations"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Balances & credit",
+      "item": [
+        {
+          "name": "Customer balances",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/customer-balances?EquivalentCurrency=USD",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "customer-balances"],
+              "query": [{ "key": "EquivalentCurrency", "value": "USD" }]
+            }
+          }
+        },
+        {
+          "name": "Balance transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/customer-balances/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "customer-balances", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "Customer credit",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/v1/customer-credit", "host": ["{{baseUrl}}"], "path": ["v1", "customer-credit"] }
+          }
+        }
+      ]
+    }
+  ]
+}

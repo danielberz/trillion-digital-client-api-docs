@@ -1,0 +1,110 @@
+---
+title: "Errors"
+description: "Structured error responses and how to act on them."
+---
+
+<Warning>
+This API is in design and not yet available. See
+[Overview](/client-api/overview).
+</Warning>
+
+Errors return a structured JSON body with a stable, machine-readable code.
+
+```json
+{
+  "error": {
+    "type": "invalid_request_error",
+    "code": "PARAMETER_INVALID",
+    "message": "settlement_currency must be a supported ISO 4217 code.",
+    "param": "settlement_currency",
+    "doc_url": "https://docs.trilliondigital.io/client-api/errors#parameter_invalid",
+    "request_id": "req_01k9m2p7q3r4s5t6v7w8x9y0z1"
+  }
+}
+```
+
+<ResponseField name="type" type="string">
+  Broad category — determines how to react.
+</ResponseField>
+<ResponseField name="code" type="string">
+  Stable machine-readable code. **Branch on this**, never on `message`.
+</ResponseField>
+<ResponseField name="message" type="string">
+  Human-readable explanation. Wording may change without notice.
+</ResponseField>
+<ResponseField name="param" type="string">
+  The offending parameter, when the error is attributable to one.
+</ResponseField>
+<ResponseField name="request_id" type="string">
+  Quote this when contacting support.
+</ResponseField>
+
+## Types
+
+| Type | Status | Retry? |
+| --- | --- | --- |
+| `authentication_error` | `401` | No — fix the key |
+| `permission_error` | `403` | No — key lacks scope |
+| `invalid_request_error` | `400` | No — fix the request |
+| `not_found_error` | `404` | No |
+| `conflict_error` | `409` | No — see the code |
+| `rate_limit_error` | `429` | Yes, after `Retry-After` |
+| `api_error` | `5xx` | Yes, with backoff |
+
+## Common codes
+
+| Code | Meaning |
+| --- | --- |
+| `PARAMETER_MISSING` | A required parameter was absent |
+| `PARAMETER_INVALID` | A parameter failed validation |
+| `IDEMPOTENCY_KEY_REUSED` | Same key, different body — see [Idempotency](/client-api/idempotency) |
+| `RESOURCE_ARCHIVED` | The resource exists but is archived |
+| `INSUFFICIENT_FUNDS` | Available balance too low |
+| `DESTINATION_NOT_APPROVED` | Settlement destination not registered or screened |
+| `VERSION_UNSUPPORTED` | Unknown or retired `Trillion-Version` |
+
+## Handling
+
+<Steps>
+  <Step title="Branch on code">
+    `code` is stable; `message` is not. Never parse the message text.
+  </Step>
+  <Step title="Retry only what is retryable">
+    `5xx` and `429`. Everything else will fail identically on retry.
+  </Step>
+  <Step title="Respect Retry-After">
+    On `429`, wait the interval given rather than backing off blindly.
+  </Step>
+  <Step title="Log the request_id">
+    It is the fastest route to a diagnosis and the first thing support will ask
+    for.
+  </Step>
+</Steps>
+
+<Warning>
+Retrying a `4xx` is nearly always a bug. It will not succeed, it consumes rate
+limit, and in aggregate it turns a clear client-side error into what looks like a
+platform incident.
+</Warning>
+
+## Validation errors
+
+A request failing validation in several places reports all of them, so a form or
+batch can be corrected in one pass.
+
+```json
+{
+  "error": {
+    "type": "invalid_request_error",
+    "code": "PARAMETER_INVALID",
+    "message": "The request contains invalid parameters.",
+    "errors": [
+      { "param": "beneficiary.address.city", "code": "PARAMETER_MISSING",
+        "message": "City is required." },
+      { "param": "amount.currency", "code": "PARAMETER_INVALID",
+        "message": "Unsupported currency." }
+    ],
+    "request_id": "req_01k9m2p7q3r4s5t6v7w8x9y0z1"
+  }
+}
+```

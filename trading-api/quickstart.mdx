@@ -1,0 +1,141 @@
+---
+title: "Quickstart"
+description: "From credentials to your first streaming price in about ten minutes."
+---
+
+This walks from a fresh API key to live prices on your screen. It uses sandbox
+throughout, so nothing here touches real funds.
+
+<Steps>
+  <Step title="Get sandbox credentials">
+    Email [support@trilliondigital.io](mailto:support@trilliondigital.io) for a
+    sandbox API key and secret. Production keys are issued separately and will
+    not work here.
+
+    ```bash
+    export TD_API_KEY="<apikey>"
+    export TD_API_SECRET="<apisecret>"
+    export TD_HOST="sandbox.trading.trilliondigital.io"
+    ```
+  </Step>
+
+  <Step title="Prove your credentials over REST">
+    Before touching WebSockets, confirm the signature works with the simplest
+    possible call. `/v1/time` returns server time and requires no parameters, so
+    a failure here is unambiguously a signing problem.
+
+    ```bash
+    TS=$(python3 -c "from datetime import datetime,timezone;print(datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')+'Z')")
+    SIGN=$(printf 'GET\n%s\n%s\n/v1/time' "$TS" "$TD_HOST" \
+      | openssl dgst -sha256 -hmac "$TD_API_SECRET" -binary \
+      | openssl base64 -A | tr '+/' '-_')
+
+    curl -sS "https://${TD_HOST}/v1/time" \
+      -H "ApiKey: ${TD_API_KEY}" \
+      -H "ApiTimestamp: ${TS}" \
+      -H "ApiSign: ${SIGN}"
+    ```
+
+    <Check>
+    A `200` means your key, secret, timestamp format, and signature construction
+    are all correct. A `401` means the signature is wrong — check the four
+    gotchas in [Authentication](/trading-api/authentication).
+    </Check>
+  </Step>
+
+  <Step title="Connect the WebSocket">
+    Install the client library and open an authenticated connection. You should
+    see a `hello` message immediately.
+
+    ```bash
+    pip install websocket-client
+    ```
+
+    ```python stream.py
+    import base64, hashlib, hmac, json, os
+    from datetime import datetime, timezone
+    from websocket import create_connection
+
+    KEY, SECRET = os.environ["TD_API_KEY"], os.environ["TD_API_SECRET"]
+    HOST, PATH = os.environ["TD_HOST"], "/ws/v1"
+
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+    payload = "\n".join(["GET", ts, HOST, PATH])
+    digest = hmac.new(SECRET.encode("ascii"), payload.encode("ascii"), hashlib.sha256).digest()
+
+    ws = create_connection(
+        f"wss://{HOST}{PATH}",
+        header={
+            "ApiKey": KEY,
+            "ApiSign": base64.urlsafe_b64encode(digest).decode(),
+            "ApiTimestamp": ts,
+        },
+    )
+
+    print("<-", ws.recv())  # hello
+    ```
+  </Step>
+
+  <Step title="Discover what you can trade">
+    Subscribe to the `Security` stream. The initial snapshot lists every security
+    available to your account — you need a real symbol before you can request
+    prices.
+
+    ```python
+    ws.send(json.dumps({"reqid": 1, "type": "subscribe",
+                        "streams": [{"name": "Security"}]}))
+
+    msg = json.loads(ws.recv())
+    symbols = [s["Symbol"] for s in msg.get("data", [])]
+    print(symbols[:10])
+    ```
+  </Step>
+
+  <Step title="Stream live prices">
+    Subscribe to `MarketDataSnapshot` for one of those symbols. Updates arrive
+    continuously until you cancel.
+
+    ```python
+    ws.send(json.dumps({"reqid": 2, "type": "subscribe",
+                        "streams": [{"name": "MarketDataSnapshot",
+                                     "Symbol": "BTC-USD"}]}))
+
+    while True:
+        msg = json.loads(ws.recv())
+        if msg.get("type") == "MarketDataSnapshot":
+            for update in msg.get("data", []):
+                bid = update["Bids"][0]["Price"] if update.get("Bids") else None
+                offer = update["Offers"][0]["Price"] if update.get("Offers") else None
+                print(f"{update['Symbol']}  bid={bid}  offer={offer}")
+    ```
+
+    <Check>
+    Streaming bids and offers means your integration is working end to end:
+    signing, transport, subscription, and message handling.
+    </Check>
+  </Step>
+</Steps>
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Connection lifecycle" icon="arrows-rotate" href="/trading-api/connection-lifecycle">
+    Heartbeats, reconnection, and applying `Update` / `Remove` correctly. Read
+    this before running anything unattended.
+  </Card>
+  <Card title="RFQ workflow" icon="tag" href="/trading-api/websocket/streams/quote">
+    Request a quote and turn it into a trade.
+  </Card>
+  <Card title="Commands" icon="paper-plane" href="/trading-api/websocket/commands">
+    Submit, amend, and cancel orders; request withdrawals and deposits.
+  </Card>
+  <Card title="REST endpoints" icon="server" href="/trading-api/rest/endpoints">
+    Reference and historical data.
+  </Card>
+</CardGroup>
+
+<Warning>
+The quickstart omits error handling and reconnection so the mechanics stay
+visible. Do not use it as the skeleton of a production client — start from
+[Connection lifecycle](/trading-api/connection-lifecycle) instead.
+</Warning>

@@ -1,0 +1,81 @@
+---
+title: "Settlement instructions"
+description: "Registering the bank details your fiat settles against."
+---
+
+Standing settlement instructions (SSIs) tell us where your fiat goes. One is
+registered per currency and rail, screened, and then used for every settlement in
+that currency.
+
+## What an SSI contains
+
+<ResponseField name="Beneficiary" required>
+  The legal name on the receiving account. Must match the bank's record exactly.
+</ResponseField>
+<ResponseField name="Beneficiary address" required>
+  **Complete** — street, town, and country. Incomplete addresses are the single
+  most common cause of returned wires.
+</ResponseField>
+<ResponseField name="Account identifier" required>
+  Account number, IBAN, or equivalent for the rail.
+</ResponseField>
+<ResponseField name="Bank" required>
+  Receiving bank name, address, and routing identifier — ABA for Fedwire, BIC for
+  SWIFT, and so on.
+</ResponseField>
+<ResponseField name="Intermediary bank">
+  Where the receiving bank requires one for international payments.
+</ResponseField>
+<ResponseField name="Currency and rail" required>
+  Which currency and rail this instruction applies to.
+</ResponseField>
+
+<Warning>
+Both the **beneficiary** address and the **bank** address are required for wire
+rails, and both must be structured — street, town, country. A payment can be
+refused for a missing town name on either, and the refusal often arrives days
+later.
+</Warning>
+
+## Registering one
+
+<Steps>
+  <Step title="Submit details">
+    Through the platform, or via your account manager. You may be sent a secure
+    link to submit them directly.
+  </Step>
+  <Step title="Verification and screening">
+    Details are validated and the beneficiary screened.
+  </Step>
+  <Step title="Approval">
+    Once approved the instruction becomes usable for settlement.
+  </Step>
+</Steps>
+
+<Note>
+Registration takes time. Register during onboarding rather than when a trade is
+already waiting to settle.
+</Note>
+
+## Changing an SSI
+
+Changes are treated as new registrations — re-verified and re-screened, not
+edited in place. Allow the same lead time as a first registration.
+
+<Warning>
+Bank detail changes are a standard target for payment fraud. We will verify any
+change through an independent channel before applying it. Expect that call — and
+be suspicious of anyone who tells you it is unnecessary.
+</Warning>
+
+## Multiple currencies
+
+Register one instruction per currency you settle in. Instructions are not
+interchangeable across currencies, and an instruction registered against one
+Trillion Digital entity is not visible to another — see
+[Entities](/guides/accounts/entities).
+
+## Payments to third parties
+
+Settlement is to accounts in your own name. Third-party payments require
+compliance review in advance and are not accepted as routine.

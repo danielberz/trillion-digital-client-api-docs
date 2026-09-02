@@ -1,0 +1,63 @@
+---
+title: "Instruments"
+description: "What you can trade, and the constraints that apply."
+---
+
+The instruments available to you depend on your account's entitlements, your
+facing entity, and your commercial terms.
+
+<Note>
+**Your account's live instrument list is authoritative.** In the terminal it is
+the instrument selector; over the API it is the
+[`Security`](/trading-api/websocket/streams/security) stream or
+`GET /v1/markets`. Query it rather than maintaining a hardcoded list — securities
+are added and disabled over time.
+</Note>
+
+## Symbol convention
+
+Instruments are quoted as a pair, `BASE-QUOTE`:
+
+| Symbol | Base | Quote | Meaning |
+| --- | --- | --- | --- |
+| `BTC-USD` | BTC | USD | Bitcoin priced in US dollars |
+| `ETH-USD` | ETH | USD | Ether priced in US dollars |
+| `USDT-USD` | USDT | USD | Tether priced in US dollars |
+
+Buying `BTC-USD` means receiving BTC and paying USD.
+
+## Constraints on every instrument
+
+Each security carries its own trading constraints, published on the
+[`Security`](/trading-api/websocket/streams/security) stream:
+
+<ResponseField name="MinimumSize / MaximumSize">
+  The smallest and largest order accepted.
+</ResponseField>
+<ResponseField name="MinPriceIncrement">
+  Prices must be a whole multiple of this.
+</ResponseField>
+<ResponseField name="MinSizeIncrement">
+  Quantities expressed in the **base** currency must be a whole multiple of this.
+</ResponseField>
+<ResponseField name="MinAmtIncrement">
+  Quantities expressed in the **quote** currency must be a whole multiple of this.
+</ResponseField>
+
+<Warning>
+Increment violations are the most common cause of rejected orders. Note that
+which increment applies depends on the currency you expressed the order in.
+Round before submitting.
+</Warning>
+
+## Settlement currency
+
+An instrument's settlement currency is not always its quote currency. Check
+`SettlementCurrency` on the security, and make sure you hold registered
+settlement details for it — see
+[Settlement instructions](/guides/settlement/settlement-instructions).
+
+## Adding an instrument
+
+If you need something not currently enabled on your account, ask your account
+manager. Availability depends on liquidity, your entity, and compliance review.

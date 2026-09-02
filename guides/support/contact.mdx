@@ -1,0 +1,56 @@
+---
+title: "Contact"
+description: "Who to reach, and what to include."
+---
+
+## Channels
+
+| Need | Contact |
+| --- | --- |
+| Trading, pricing, commercial terms | Your account manager |
+| Platform issues, API credentials, technical | [support@trilliondigital.io](mailto:support@trilliondigital.io) |
+| Onboarding, documentation, KYC | [compliance@trilliondigital.io](mailto:compliance@trilliondigital.io) |
+| Suspected security issue | [security@trilliondigital.io](mailto:security@trilliondigital.io) |
+| New business | [sales@trilliondigital.io](mailto:sales@trilliondigital.io) |
+
+## What to include
+
+Including the right identifiers in the first message usually removes an entire
+round trip.
+
+<AccordionGroup>
+  <Accordion title="Trade or settlement query">
+    The **trade ID**, and the transaction ID if settlement has been instructed.
+    State what you expected and what you observed.
+  </Accordion>
+  <Accordion title="API issue">
+    The **environment** (sandbox or production), the endpoint or stream name, the
+    `reqid`, the timestamp, and the exact error. For WebSocket issues include the
+    `session_id` from the `hello` message.
+  </Accordion>
+  <Accordion title="Authentication failure">
+    The environment, the exact `ApiTimestamp` you sent, and the path. Do **not**
+    send your API secret — support never needs it, and anyone who asks for it is
+    not from Trillion Digital.
+  </Accordion>
+  <Accordion title="Settlement not received">
+    The trade ID, transaction ID, expected value date, and the registered
+    destination you expected it to reach.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+Never send an API secret, password, or private key by email — to us or anyone
+else. No legitimate support process requires them.
+</Warning>
+
+## Urgent settlement issues
+
+For a settlement discrepancy approaching its value date, contact your account
+manager directly as well as emailing support. Discrepancies are substantially
+easier to resolve before funds move than after.
+
+## Requesting API credentials
+
+Email [support@trilliondigital.io](mailto:support@trilliondigital.io) stating
+the environment. Sandbox and production keys are issued separately.

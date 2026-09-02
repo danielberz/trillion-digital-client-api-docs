@@ -1,0 +1,188 @@
+---
+title: "Authentication"
+description: "Signing requests to the Trading API with HMAC-SHA256."
+---
+
+Every WebSocket connection and REST request is authenticated with three HTTP
+headers. There are no bearer tokens and no session cookies — each request carries
+its own signature.
+
+## Headers
+
+<ParamField header="ApiKey" type="string" required>
+  Your Trillion Digital API key for the environment you are connecting to.
+</ParamField>
+
+<ParamField header="ApiTimestamp" type="string" required>
+  An ISO-8601 UTC string with microsecond resolution, of the form
+  `2019-02-13T05:17:32.000000Z`. This exact string must also be used when
+  building the signature.
+</ParamField>
+
+<ParamField header="ApiSign" type="string" required>
+  The URL-safe base64-encoded HMAC-SHA256 signature described below.
+</ParamField>
+
+## Building the signature
+
+The signature is an HMAC-SHA256 over a newline-joined string, keyed with your API
+secret, then encoded as **URL-safe base64**.
+
+<Tabs>
+  <Tab title="WebSocket">
+    ```
+    GET\n<ApiTimestamp>\n<host>\n<path>
+    ```
+
+    For example:
+
+    ```
+    GET\n2019-02-13T05:17:32.000000Z\nsandbox.trading.trilliondigital.io\n/ws/v1
+    ```
+  </Tab>
+  <Tab title="REST">
+    ```
+    GET\n<ApiTimestamp>\n<host>\n<path>[\nquery][\nbody]
+    ```
+
+    `query` and `body` are appended **only if they are non-empty**. For example:
+
+    ```
+    GET\n2019-02-13T05:17:32.000000Z\nsandbox.trading.trilliondigital.io\n/v1/symbols/BTC-USD/ohlcv/1D
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+Four details cause almost every signing failure:
+
+1. **The host has no scheme and no port** — `sandbox.trading.trilliondigital.io`,
+   not `https://sandbox.trading.trilliondigital.io`.
+2. **The timestamp must have exactly six fractional digits.** A standard
+   millisecond ISO string (`...32.000Z`) will not verify.
+3. **The encoding is URL-safe base64 with padding retained.** Substitute `+`→`-`
+   and `/`→`_`, but do not strip trailing `=`.
+4. **The same timestamp string must appear in both the header and the signed
+   payload.** Generating it twice risks a mismatch.
+</Warning>
+
+## Reference implementations
+
+<CodeGroup>
+
+```python Python
+import base64
+import hashlib
+import hmac
+from datetime import datetime, timezone
+
+from websocket import create_connection  # pip install websocket-client
+
+API_KEY = "<apikey>"
+API_SECRET = "<apisecret>"
+HOST = "sandbox.trading.trilliondigital.io"
+PATH = "/ws/v1"
+
+
+def timestamp() -> str:
+    """ISO-8601 UTC with exactly six fractional digits."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+
+
+def sign(secret: str, payload: str) -> str:
+    digest = hmac.new(secret.encode("ascii"), payload.encode("ascii"), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).decode()
+
+
+ts = timestamp()
+payload = "\n".join(["GET", ts, HOST, PATH])
+
+headers = {
+    "ApiKey": API_KEY,
+    "ApiSign": sign(API_SECRET, payload),
+    "ApiTimestamp": ts,
+}
+
+ws = create_connection(f"wss://{HOST}{PATH}", header=headers)
+while True:
+    print(ws.recv())
+```
+
+```typescript TypeScript
+import { createHmac } from "node:crypto";
+import WebSocket from "ws";
+
+const API_KEY = "<apikey>";
+const API_SECRET = "<apisecret>";
+const HOST = "sandbox.trading.trilliondigital.io";
+const PATH = "/ws/v1";
+
+/** ISO-8601 UTC with exactly six fractional digits. */
+function timestamp(): string {
+  return new Date().toISOString().replace("Z", "000Z");
+}
+
+function sign(secret: string, payload: string): string {
+  return createHmac("sha256", secret)
+    .update(payload)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_"); // padding is retained
+}
+
+const ts = timestamp();
+const payload = ["GET", ts, HOST, PATH].join("\n");
+
+const ws = new WebSocket(`wss://${HOST}${PATH}`, {
+  headers: {
+    ApiKey: API_KEY,
+    ApiSign: sign(API_SECRET, payload),
+    ApiTimestamp: ts,
+  },
+});
+
+ws.on("message", (data) => console.log(data.toString()));
+```
+
+```bash curl
+# REST example. Regenerate TS and SIGN on every call — signatures are
+# timestamp-bound and cannot be reused.
+HOST="sandbox.trading.trilliondigital.io"
+PATH_="/v1/symbols/BTC-USD/ohlcv/1D"
+SECRET="<apisecret>"
+TS=$(python3 -c "from datetime import datetime,timezone;print(datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')+'Z')")
+
+SIGN=$(printf 'GET\n%s\n%s\n%s' "$TS" "$HOST" "$PATH_" \
+  | openssl dgst -sha256 -hmac "$SECRET" -binary \
+  | openssl base64 -A | tr '+/' '-_')
+
+curl -sS "https://${HOST}${PATH_}" \
+  -H "ApiKey: <apikey>" \
+  -H "ApiTimestamp: ${TS}" \
+  -H "ApiSign: ${SIGN}"
+```
+
+</CodeGroup>
+
+## Signature lifetime
+
+Signatures are bound to the timestamp they were generated with, so they expire
+quickly and cannot be cached or replayed. This is why a saved Postman request
+will fail on its second send — see [Postman](/trading-api/sdks/postman) for a
+collection with a pre-request signing script.
+
+## Key management
+
+<Note>
+Sandbox and production keys are separate and not interchangeable. Request both
+from [support@trilliondigital.io](mailto:support@trilliondigital.io).
+</Note>
+
+Treat the API secret as you would a private key. It is used only to compute
+signatures locally and is never transmitted — if you find yourself putting the
+secret in a header or request body, the integration is wrong.
+
+## FIX authentication
+
+FIX sessions authenticate at logon rather than per message. See
+[FIX logon](/trading-api/fix/logon).

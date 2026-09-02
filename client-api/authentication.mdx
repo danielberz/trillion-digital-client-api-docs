@@ -1,0 +1,104 @@
+---
+title: "Authentication"
+description: "API keys, environments, and key management."
+---
+
+<Warning>
+This API is in design and not yet available. See
+[Overview](/client-api/overview).
+</Warning>
+
+Requests authenticate with an API key in the `Authorization` header.
+
+```bash
+curl https://api.trilliondigital.io/accounts \
+  -H "Authorization: Bearer tdk_live_..." \
+  -H "Trillion-Version: 2026-09-01"
+```
+
+## Environments
+
+There is **one base URL**. The key prefix decides which environment you reach.
+
+| Prefix | Environment | Effect |
+| --- | --- | --- |
+| `tdk_test_` | Sandbox | Simulated data. Nothing settles. |
+| `tdk_live_` | Production | Real accounts, real money. |
+
+<Tip>
+A single base URL removes an entire class of deployment accident: it is
+impossible to point sandbox credentials at production by editing a hostname,
+because the credential itself carries the environment. Promotion is a key swap,
+nothing else.
+</Tip>
+
+<Warning>
+The corollary is that a `tdk_live_` key in a test configuration will move real
+money. Enforce the prefix in your own configuration validation — assert that
+non-production deployments hold only `tdk_test_` keys, and fail startup
+otherwise.
+</Warning>
+
+## Design rationale
+
+The [Trading API](/trading-api/authentication) uses per-request HMAC signing.
+This API deliberately does not, because the two have different threat models and
+different consumers.
+
+<CardGroup cols={2}>
+  <Card title="Why HMAC there" icon="signature">
+    Trading carries order entry over a long-lived connection where replay
+    protection and per-message integrity are worth the implementation cost.
+  </Card>
+  <Card title="Why bearer here" icon="key">
+    Operational and reporting calls over TLS, where a simpler scheme materially
+    lowers integration cost and works with every standard HTTP client and tool.
+  </Card>
+</CardGroup>
+
+<Note>
+The practical consequence is that this API works with an ordinary Postman
+collection, `curl`, or a generated client, with no signing code — which is
+exactly the friction the Trading API's signing imposes today.
+</Note>
+
+## Key management
+
+<AccordionGroup>
+  <Accordion title="Scoping">
+    Keys are scoped to an account and a permission set. Issue read-only keys for
+    reporting and reconciliation; reserve write scope for systems that genuinely
+    instruct.
+  </Accordion>
+  <Accordion title="Rotation">
+    Keys can be rotated without downtime — issue the new key, deploy it, then
+    revoke the old one. Overlapping validity is supported precisely so rotation
+    need not be a coordinated outage.
+  </Accordion>
+  <Accordion title="Storage">
+    A key is shown once at creation and cannot be retrieved afterwards. Store it
+    in a secrets manager, never in source control.
+  </Accordion>
+  <Accordion title="Revocation">
+    Revocation takes effect immediately. Revoke on any suspicion of compromise
+    and whenever someone with access leaves.
+  </Accordion>
+</AccordionGroup>
+
+## Additional controls
+
+<ResponseField name="IP allowlisting">
+  Keys may be restricted to a set of source addresses.
+</ResponseField>
+<ResponseField name="mTLS">
+  Mutual TLS is available for clients whose security posture requires it.
+</ResponseField>
+
+## Errors
+
+| Status | Meaning |
+| --- | --- |
+| `401` | Missing, malformed, or revoked key |
+| `403` | Valid key without permission for this resource |
+
+See [Errors](/client-api/errors).

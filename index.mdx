@@ -1,20 +1,58 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "Trillion Digital"
+sidebarTitle: "Home"
+description: "Institutional OTC trading for digital assets — platform guides and API reference."
+mode: "wide"
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+Trillion Digital provides institution-grade OTC trading, settlement, and treasury
+infrastructure for digital assets. This site covers how the platform works and how
+to integrate with it programmatically.
 
-<Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
-</Tip>
+<CardGroup cols={2}>
+  <Card title="Knowledge Center" icon="book-open" href="/guides/overview">
+    How trading, settlement, onboarding, and compliance work on the platform.
+    Start here if you are new.
+  </Card>
+  <Card title="Trading API" icon="bolt" href="/trading-api/overview">
+    Real-time market data, RFQ, order execution, and balances over WebSocket,
+    REST, and FIX. This is the API available today.
+  </Card>
+  <Card title="Client API" icon="code" href="/client-api/overview">
+    Our first-party REST API for accounts, settlement, and reporting.
+    Currently in design — the contract is published for review.
+  </Card>
+  <Card title="Changelog" icon="clock-rotate-left" href="/changelog">
+    Platform and API changes, newest first.
+  </Card>
+</CardGroup>
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>
+## Choosing an integration path
+
+<Steps>
+  <Step title="Trade programmatically">
+    Use the [Trading API](/trading-api/overview). Market data, RFQ, and order
+    execution run over a persistent WebSocket connection; historical data and
+    reference data are available over REST. FIX 4.4 is supported for
+    institutional order flow.
+  </Step>
+  <Step title="Trade manually">
+    Use the web terminal. Your account manager will provision access during
+    onboarding — see [Getting started](/guides/getting-started).
+  </Step>
+  <Step title="Reconcile and report">
+    Trade, balance, and settlement history are available over both the Trading
+    API and, once released, the [Client API](/client-api/overview).
+  </Step>
+</Steps>
+
+## Getting credentials
+
+API keys are issued per environment — sandbox and production keys are separate
+and not interchangeable. Email
+[support@trilliondigital.io](mailto:support@trilliondigital.io) to request them.
+
+<Note>
+Sandbox is a full-featured test environment with simulated liquidity. Always
+build and certify against sandbox before requesting production credentials.
+</Note>

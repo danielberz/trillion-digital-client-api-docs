@@ -1,0 +1,64 @@
+---
+title: "Currency & CurrencyConversion"
+sidebarTitle: "Currency"
+description: "Currency reference data and conversion rates."
+---
+
+## Currency
+
+Streams the currencies known to the platform and their increments.
+
+```json
+{
+  "reqid": 2,
+  "type": "subscribe",
+  "streams": [{ "name": "Currency" }]
+}
+```
+
+### Parameters
+
+<ParamField body="Symbols" type="string[]">
+  Optional list of currency symbols to filter on.
+</ParamField>
+
+### Response
+
+<ResponseField name="Timestamp" type="datetime" required>Timestamp of message publication.</ResponseField>
+<ResponseField name="CurrencyID" type="string" required>System ID, informational only.</ResponseField>
+<ResponseField name="Symbol" type="string" required>Currency symbol.</ResponseField>
+<ResponseField name="MinIncrement" type="decimal" required>Minimum increment for the currency.</ResponseField>
+<ResponseField name="DefaultIncrement" type="decimal" required>
+  Default increment used in market data and orders.
+</ResponseField>
+<ResponseField name="Description" type="string" required>Description.</ResponseField>
+
+<Tip>
+`MinIncrement` here is the currency's own precision — distinct from a security's
+`MinSizeIncrement`. Use the security's increments to validate orders, and the
+currency's increment to format balances.
+</Tip>
+
+## CurrencyConversion
+
+Streams conversion rates between currencies. Useful for expressing balances or
+exposure in a single reporting currency.
+
+```json
+{
+  "reqid": 3,
+  "type": "subscribe",
+  "streams": [{ "name": "CurrencyConversion" }]
+}
+```
+
+### Response
+
+<ResponseField name="Timestamp" type="datetime" required>Timestamp of message publication.</ResponseField>
+<ResponseField name="Rate" type="decimal" required>Currency conversion rate.</ResponseField>
+
+<Note>
+For balances specifically, you do not need this stream — the
+[`Balance`](/trading-api/websocket/streams/balance) subscription accepts an
+`EquivalentCurrency` parameter and returns converted amounts inline.
+</Note>

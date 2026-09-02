@@ -1,0 +1,87 @@
+---
+title: "FIX messages"
+description: "Order entry, market data, and security list over FIX 4.4."
+---
+
+Examples below use `^A` for the ASCII 01 delimiter.
+
+## NewOrderSingle (35=D)
+
+Submits an order.
+
+```
+8=FIX.4.4^A9=147^A35=D^A34=2^A49=CUSTOMER^A52=20220915-18:30:01.335^A56=Trillion Digital^A11=id-220912164936074-1152^A38=1^A40=2^A44=1630.123^A54=2^A55=ETH-USD^A59=1^A60=20220915-14:30:01^A10=228^A
+```
+
+| Tag | Field | Meaning |
+| --- | --- | --- |
+| `11` | ClOrdID | Your unique order ID |
+| `38` | OrderQty | Quantity |
+| `40` | OrdType | `1` Market, `2` Limit |
+| `44` | Price | Limit price, required when `40=2` |
+| `54` | Side | `1` Buy, `2` Sell |
+| `55` | Symbol | Security, e.g. `ETH-USD` |
+| `59` | TimeInForce | `1` GoodTillCancel |
+| `60` | TransactTime | Submission time |
+
+<Warning>
+`ClOrdID` (11) must be unique per session. Reusing one is rejected as a duplicate
+— which is a safety feature, not an obstacle: it is what makes a retry after an
+uncertain disconnect safe.
+</Warning>
+
+## OrderCancelRequest (35=F)
+
+Cancels a working order. Reference the original order via `OrigClOrdID` (41) or
+`OrderID` (37), and assign a new `ClOrdID` (11) to the cancel request itself.
+
+## ExecutionReport (35=8)
+
+The response to order activity — acknowledgements, fills, cancels, rejections.
+
+| Tag | Field | Meaning |
+| --- | --- | --- |
+| `37` | OrderID | Server-assigned order ID |
+| `11` | ClOrdID | Your order ID |
+| `17` | ExecID | Unique ID of this report |
+| `150` | ExecType | What just happened |
+| `39` | OrdStatus | Current order state |
+| `14` | CumQty | Cumulative filled quantity |
+| `151` | LeavesQty | Quantity still working |
+| `6` | AvgPx | Average fill price, excluding fees |
+| `31` | LastPx | Price of this fill |
+| `32` | LastQty | Quantity of this fill |
+| `103` | OrdRejReason | Set when rejected |
+| `58` | Text | Human-readable detail |
+
+<Note>
+As on the WebSocket API, `ExecType` (150) describes the event while `OrdStatus`
+(39) describes the resulting state. Drive your state machine from `OrdStatus`.
+</Note>
+
+## OrderCancelReject (35=9)
+
+Sent when a cancel or cancel/replace is refused. `CxlRejReason` (102) carries the
+reason and `CxlRejResponseTo` (434) indicates whether it was a cancel or a
+replace.
+
+## MarketDataRequest (35=V)
+
+Subscribes to market data. `SubscriptionRequestType` (263) selects snapshot
+(`0`), snapshot plus updates (`1`), or unsubscribe (`2`). `MDReqID` (262)
+correlates the responses.
+
+Data returns as **MarketDataSnapshotFullRefresh (35=W)** — full book state per
+message, not deltas.
+
+## SecurityListRequest (35=x)
+
+Requests all tradeable securities. Responses arrive as **SecurityList (35=y)**
+carrying symbols, increments, and size limits — the FIX equivalent of the
+[`Security`](/trading-api/websocket/streams/security) stream.
+
+<Tip>
+Request the security list at session start and cache it. Increments and minimum
+sizes from this message are what validate your orders — hardcoding them is the
+usual cause of avoidable rejections.
+</Tip>

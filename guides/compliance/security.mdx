@@ -1,0 +1,77 @@
+---
+title: "Security"
+description: "How the platform is protected, and your side of that."
+---
+
+## Platform controls
+
+<CardGroup cols={2}>
+  <Card title="Encryption in transit" icon="lock">
+    All API and web traffic is TLS-encrypted. There is no unencrypted endpoint.
+  </Card>
+  <Card title="Per-request signing" icon="signature">
+    Every API request carries its own HMAC-SHA256 signature bound to a timestamp,
+    so captured requests cannot be replayed.
+  </Card>
+  <Card title="Mandatory MFA" icon="shield-halved">
+    Multi-factor authentication is required for every platform user.
+  </Card>
+  <Card title="Whitelisted destinations" icon="list-check">
+    Funds move only to pre-registered, screened bank accounts and wallet
+    addresses.
+  </Card>
+</CardGroup>
+
+## Your responsibilities
+
+<AccordionGroup>
+  <Accordion title="Protect the API secret">
+    The secret is used only to compute signatures locally and is never
+    transmitted. Store it in a secrets manager, never in source control, and
+    never in a browser-side application. If you find yourself putting it in a
+    request body or header, the integration is wrong.
+  </Accordion>
+  <Accordion title="One login per person">
+    Shared accounts destroy the audit trail linking an instruction to the person
+    who gave it.
+  </Accordion>
+  <Accordion title="Remove access promptly">
+    Tell us when someone leaves — and say explicitly which API keys should be
+    revoked. Revoking a login does not stop an integration using a key.
+  </Accordion>
+  <Accordion title="Rotate keys">
+    Rotate periodically and whenever someone with access departs.
+  </Accordion>
+  <Accordion title="Verify out of band">
+    Confirm any change to settlement details through a known contact on a known
+    number — never using contact details supplied in the message requesting the
+    change.
+  </Accordion>
+</AccordionGroup>
+
+## Fraud
+
+Payment fraud in this industry overwhelmingly targets **settlement details**,
+not systems. The pattern is a convincing request to change bank details or a
+wallet address, often from a compromised or lookalike email account, timed
+around a known settlement.
+
+<Warning>
+We will independently verify any change to settlement details before applying it.
+Treat pressure to skip that verification — urgency, a claimed deadline, a request
+to use a new contact number — as the strongest possible signal that the request
+is fraudulent.
+</Warning>
+
+## Reporting a security issue
+
+Email [security@trilliondigital.io](mailto:security@trilliondigital.io) with
+enough detail to reproduce the issue. We welcome good-faith reports and will
+acknowledge them.
+
+<Note>
+If you believe an account or credential is compromised, treat it as urgent:
+contact [support@trilliondigital.io](mailto:support@trilliondigital.io)
+immediately and request key revocation. Do not wait for a reply to a
+non-urgent channel.
+</Note>

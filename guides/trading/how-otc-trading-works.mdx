@@ -1,0 +1,75 @@
+---
+title: "How OTC trading works"
+description: "Bilateral execution, and how it differs from an exchange."
+---
+
+Trillion Digital is a principal counterparty. You trade bilaterally with us at a
+price quoted to you, rather than matching anonymously against other participants
+on a public order book.
+
+## Why it differs from an exchange
+
+<CardGroup cols={2}>
+  <Card title="Price is quoted to you" icon="tag">
+    You receive a firm price in the size you asked for. There is no partial
+    walk-up through a book and no slippage from your own order moving the market.
+  </Card>
+  <Card title="Size is private" icon="eye-slash">
+    Your interest is not broadcast. Large orders do not signal to the market
+    before they execute.
+  </Card>
+  <Card title="Settlement is bilateral" icon="building-columns">
+    Funds move between your accounts and ours against agreed instructions — not
+    through an exchange's omnibus wallet.
+  </Card>
+  <Card title="Credit is a relationship" icon="handshake">
+    Where credit is extended, terms are set for your account rather than
+    uniformly across a venue.
+  </Card>
+</CardGroup>
+
+## The two execution styles
+
+### Request for quote
+
+The normal path. You ask for a price in a specific size; we return a firm two-way
+quote valid for a short window; you choose whether to trade. See
+[RFQ workflow](/guides/trading/rfq-workflow).
+
+Best when size matters and you want certainty of price before committing.
+
+### Streaming prices with orders
+
+Continuous prices, against which you place market or limit orders. See
+[Order commands](/trading-api/websocket/commands).
+
+Best for smaller, more frequent, or automated flow.
+
+<Note>
+Both are available over the API and in the terminal. Most institutional flow uses
+RFQ; automated strategies more often use streaming prices.
+</Note>
+
+## What "firm" means
+
+A quote is executable at the stated price for the stated size until
+`ValidUntilTime`. Within that window the price will not move against you.
+
+<Warning>
+Quotes expire — by default after about three minutes, though `ValidUntilTime` on
+the quote is authoritative. An expired quote cannot be accepted; you must request
+a new one, and the new price may differ. Build acceptance flows that check expiry
+rather than assuming the quote is still live.
+</Warning>
+
+## Pricing
+
+Pricing reflects the instrument, size, and your commercial terms. The economics
+of a specific trade are on its confirmation: executed price, quantity, fees, and
+net settlement amount.
+
+<Note>
+Where a fee is charged separately from the price, the all-in economics are on the
+[`Trade`](/trading-api/websocket/streams/trade) record, which carries `Fee` and
+`Amount` explicitly. `AvgPx` on an execution report excludes fees.
+</Note>

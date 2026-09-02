@@ -1,0 +1,122 @@
+---
+title: "FAQ"
+description: "Common questions, with the answers that actually resolve them."
+---
+
+## Access and credentials
+
+<AccordionGroup>
+  <Accordion title="How do I get API credentials?">
+    Email [support@trilliondigital.io](mailto:support@trilliondigital.io) stating
+    which environment you need. Sandbox and production keys are issued
+    separately and are not interchangeable.
+  </Accordion>
+  <Accordion title="Can I use my sandbox key against production?">
+    No. Keys are environment-specific. The host is also part of the signed
+    payload, so pointing a sandbox integration at production requires changing
+    both the URL and the string you sign.
+  </Accordion>
+  <Accordion title="I was sent to the live terminal but I want sandbox.">
+    Sandbox is at `sandbox.trading.trilliondigital.io`. If a link took you
+    somewhere else, use that address directly and tell your account manager.
+  </Accordion>
+</AccordionGroup>
+
+## Authentication
+
+<AccordionGroup>
+  <Accordion title="Every request returns 401.">
+    In order of likelihood: the timestamp does not have exactly six fractional
+    digits; the host in the signed string includes `https://` or a port; the
+    signature is standard rather than URL-safe base64; or the same timestamp was
+    not used in both the header and the signed payload. See
+    [Authentication](/trading-api/authentication).
+  </Accordion>
+  <Accordion title="It worked, then started failing.">
+    Almost always clock drift. Signatures are timestamp-bound — sync against NTP.
+  </Accordion>
+  <Accordion title="Can I cache the signature?">
+    No. It is valid only for the moment it was generated. This is why a saved
+    Postman request fails on its second send — see
+    [Postman](/trading-api/sdks/postman).
+  </Accordion>
+</AccordionGroup>
+
+## Trading
+
+<AccordionGroup>
+  <Accordion title="My order was rejected. Why?">
+    Check `OrdRejReason` on the `ExecutionReport`. The most common causes are
+    increment violations and `OrderExceedsLimit`. See
+    [Errors](/trading-api/errors).
+  </Accordion>
+  <Accordion title="I sent an order but saw no result.">
+    Subscribe to `Order` and `ExecutionReport` **before** sending commands.
+    Command responses are acknowledgements — the outcome is published on the
+    stream, so subscribing afterwards means missing it.
+  </Accordion>
+  <Accordion title="Does OrderQty mean coins or currency?">
+    Whichever `Currency` says. On `BTC-USD` with `Currency: "BTC"` it is
+    bitcoin; with `Currency: "USD"` it is dollars of notional. Always set it
+    explicitly.
+  </Accordion>
+  <Accordion title="My quote expired before I could accept it.">
+    Quotes expire — by default after about three minutes, with `ValidUntilTime`
+    authoritative. Request a new one; the price may differ.
+  </Accordion>
+  <Accordion title="I have a balance but orders are rejected for funds.">
+    You are likely sizing against `Amount` rather than `AvailableAmount`.
+    Available excludes funds committed to working orders and pending
+    withdrawals.
+  </Accordion>
+</AccordionGroup>
+
+## Connectivity
+
+<AccordionGroup>
+  <Accordion title="My WebSocket goes quiet but never disconnects.">
+    A half-open TCP connection. It never fires a close event, so reconnect logic
+    never triggers. Send periodic pings and force a reconnect when traffic stops
+    — see [Connection lifecycle](/trading-api/connection-lifecycle).
+  </Accordion>
+  <Accordion title="After reconnecting I get no data.">
+    Subscriptions do not survive a disconnect. Replay them on reconnect.
+  </Accordion>
+  <Accordion title="My history query is missing older records.">
+    The stream paged and the `next` value was not followed. See
+    [Subscriptions](/trading-api/websocket/subscriptions#page-a-large-stream).
+  </Accordion>
+</AccordionGroup>
+
+## Settlement
+
+<AccordionGroup>
+  <Accordion title="Can I withdraw to an address not on the whitelist?">
+    No. Every destination must be registered and screened first. See
+    [Wallet whitelisting](/guides/settlement/wallet-whitelisting).
+  </Accordion>
+  <Accordion title="I submitted several wallets and only one was accepted.">
+    Usually a label collision — labels must be unique within your account, so a
+    second submission reusing a label conflicts with the first. Resubmit with
+    distinct labels.
+  </Accordion>
+  <Accordion title="My wire was returned.">
+    Most often an incomplete beneficiary address. Wire rails require street,
+    town, and country on both the beneficiary and the bank. See
+    [Fiat settlement](/guides/settlement/fiat).
+  </Accordion>
+  <Accordion title="Can I cancel a withdrawal?">
+    Only while it is `PendingApproval`. Once it reaches `PendingTransfer` it
+    cannot be recalled — and once an on-chain transaction is broadcast, nobody
+    can recall it.
+  </Accordion>
+  <Accordion title="Can you pay a third party?">
+    Settlement is to accounts in your own name. Third-party payments need
+    compliance review in advance.
+  </Accordion>
+</AccordionGroup>
+
+## Still stuck?
+
+See [Contact](/guides/support/contact) for what to include so the first reply is
+the useful one.

@@ -1,0 +1,159 @@
+---
+title: "Subscriptions"
+description: "Opening, amending, paging, and cancelling data streams."
+---
+
+A subscription opens a continuous stream of data identified by your `reqid`.
+
+## Subscribe
+
+```json Client → server
+{
+  "reqid": 5,
+  "type": "subscribe",
+  "streams": [
+    {
+      "name": "MarketDataSnapshot",
+      "Symbol": "BTC-USD"
+    }
+  ]
+}
+```
+
+<ParamField body="reqid" type="int" required>
+  Request ID, echoed on every message for this stream. Cannot be `0`.
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  `"subscribe"`.
+</ParamField>
+
+<ParamField body="tag" type="string">
+  Optional user-generated tag attached to the stream's data messages.
+</ParamField>
+
+<ParamField body="streams" type="object[]" required>
+  The streams to open.
+
+  <Expandable title="stream object">
+    <ParamField body="name" type="string" required>
+      The subscription name, for example `MarketDataSnapshot`.
+    </ParamField>
+    <ParamField body="<subscription parameters>" type="varies">
+      Any parameters defined by that stream. See the individual stream pages.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Stream updates
+
+```json Server → client
+{
+  "reqid": 5,
+  "type": "MarketDataSnapshot",
+  "ts": "2021-09-14T22:20:49.862930Z",
+  "initial": true,
+  "seq": 1,
+  "data": [
+    {
+      "Timestamp": "2021-09-14T22:20:49.860957Z",
+      "Symbol": "BTC-USD",
+      "Status": "Online",
+      "Bids": [{ "Price": "46817.27965000", "Size": "1.00000000" }],
+      "Offers": [{ "Price": "46868.59755873", "Size": "1.00000000" }]
+    }
+  ]
+}
+```
+
+<ResponseField name="reqid" type="int" required>
+  Echoes the subscribing request.
+</ResponseField>
+
+<ResponseField name="type" type="string" required>
+  The subscription name, which also tells you how to parse `data`.
+</ResponseField>
+
+<ResponseField name="seq" type="int" required>
+  Incrementing message counter for this `reqid`, starting at 1.
+</ResponseField>
+
+<ResponseField name="initial" type="boolean" required>
+  True when this message carries the stream's initial state.
+</ResponseField>
+
+<ResponseField name="ts" type="datetime" required>
+  Publication timestamp.
+</ResponseField>
+
+<ResponseField name="data" type="object[]" required>
+  Payload rows, shaped per the subscription type.
+</ResponseField>
+
+<ResponseField name="next" type="string">
+  Present only on paged streams. Pass it back to fetch the next page.
+</ResponseField>
+
+## Amend a subscription
+
+Re-send a `subscribe` with the **same `reqid`** and different parameters. The
+response structure is unchanged; only the content of `data` changes to match the
+amended request.
+
+<Tip>
+Amending beats cancel-then-resubscribe: it keeps your `reqid` stable, so response
+routing in your client does not have to change.
+</Tip>
+
+## Page a large stream
+
+When a stream is paged, its messages carry a `next` value. Request the following
+page by echoing that value back.
+
+```json Client → server
+{
+  "reqid": 5,
+  "type": "page",
+  "data": [
+    {
+      "name": "Trade",
+      "after": "<next value from the stream payload>"
+    }
+  ]
+}
+```
+
+<ParamField body="reqid" type="int" required>
+  Must match the original subscription's request ID.
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  `"page"`.
+</ParamField>
+
+<ParamField body="data[].name" type="string" required>
+  The subscription name being continued.
+</ParamField>
+
+<ParamField body="data[].after" type="string" required>
+  The `next` value delivered on the previous payload.
+</ParamField>
+
+<Warning>
+Historical queries over a wide date range — `Trade`, `Order`, `BalanceTransaction`
+— will page. A client that ignores `next` silently receives only the first page
+and will appear to be missing history. Handle `next` before running any
+reconciliation job.
+</Warning>
+
+## Cancel a subscription
+
+```json Client → server
+{
+  "reqid": 5,
+  "type": "cancel"
+}
+```
+
+Cancellation is by `reqid` alone. There is no response unless an error occurs —
+the stream simply stops.

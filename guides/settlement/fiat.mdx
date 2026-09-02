@@ -1,0 +1,85 @@
+---
+title: "Fiat settlement"
+description: "Bank rails, timing, and what makes a payment fail."
+---
+
+Fiat settles by bank transfer against your registered settlement instructions.
+
+## Rails
+
+| Rail | Scope | Typical use |
+| --- | --- | --- |
+| **Fedwire** | Domestic USD | Same-day USD settlement in the US |
+| **SWIFT** | International | Cross-border and multi-currency |
+| **ACH** | Domestic USD | Lower-cost USD, slower than wire |
+| **SEPA** | EUR area | Euro payments |
+| **Book transfer** | Internal | Between accounts at the same institution — effectively immediate |
+
+Which rails are available depends on your facing entity and the currency. Your
+account manager confirms what applies to you.
+
+<Tip>
+Where both you and the receiving party bank at the same institution, a book
+transfer is dramatically faster and cheaper than a wire. It is worth asking
+whether one is possible before defaulting to Fedwire.
+</Tip>
+
+## What makes a payment fail
+
+<AccordionGroup>
+  <Accordion title="Incomplete beneficiary address">
+    The single most common cause of a bounced wire. Wire rails require a
+    **complete** beneficiary address — street, town, and country. A missing town
+    or country is enough to have the payment returned, often days later.
+  </Accordion>
+  <Accordion title="Unregistered destination">
+    Payments go only to registered, screened instructions. An ad-hoc destination
+    supplied at instruction time will not be used.
+  </Accordion>
+  <Accordion title="Name mismatch">
+    The beneficiary name must match the account name at the receiving bank.
+    Abbreviations and trading names that differ from the registered legal name
+    cause rejections.
+  </Accordion>
+  <Accordion title="Missing intermediary details">
+    Some international payments require an intermediary bank. If the receiving
+    bank requires one and it is absent, the payment fails in transit.
+  </Accordion>
+  <Accordion title="Missed cut-off">
+    An instruction after cut-off is processed the next business day.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+A returned wire is not instant to unwind. Funds can be in transit for several
+days before the return lands, and the return itself takes time. Getting the
+beneficiary details complete and correct at registration is far cheaper than
+correcting them afterwards.
+</Warning>
+
+## Third-party payments
+
+Settlement is to accounts in **your own name**. Payments to third parties are not
+supported as a matter of course and require compliance review in advance.
+
+<Warning>
+Do not assume a third-party instruction will be processed because it was accepted
+for registration. Raise it with compliance before you rely on it commercially.
+</Warning>
+
+## Statuses
+
+Fiat instructions move through the same statuses as any balance transaction —
+see [Settlement overview](/guides/settlement/overview#tracking-settlement). Note
+that only `PendingApproval` instructions can still be cancelled.
+
+## Incoming funds
+
+When sending funds to Trillion Digital, use the account details and any reference
+provided for your account.
+
+<Warning>
+Include the reference. Deposits arriving without one require manual
+identification before they are credited, which delays the funds and, if you were
+funding a trade, can delay settlement.
+</Warning>

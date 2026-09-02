@@ -1,0 +1,89 @@
+---
+title: "Wallet whitelisting"
+description: "Registering and screening crypto destinations."
+---
+
+Crypto withdrawals go only to whitelisted addresses. Whitelisting registers an
+address, screens it, and binds it to a specific asset and network.
+
+## Why it exists
+
+<CardGroup cols={2}>
+  <Card title="Irreversibility" icon="triangle-exclamation">
+    On-chain transfers cannot be recalled. Pre-approving destinations is the only
+    effective control against a mistyped or substituted address.
+  </Card>
+  <Card title="Screening obligations" icon="shield-halved">
+    Destinations are screened against sanctions lists and analytics on illicit
+    activity before funds can move.
+  </Card>
+</CardGroup>
+
+## Registering an address
+
+<Steps>
+  <Step title="Submit the address">
+    Provide the address, the **asset**, and the **network**, plus a memo or
+    destination tag if the network requires one. You may be sent a secure link to
+    submit directly.
+  </Step>
+  <Step title="Screening">
+    The address is screened for sanctions exposure and links to illicit activity.
+  </Step>
+  <Step title="Verification">
+    Depending on the address type, ownership verification may be required.
+  </Step>
+  <Step title="Approval">
+    Once approved the address becomes available as a withdrawal destination.
+  </Step>
+</Steps>
+
+<Warning>
+Whitelisting is not instant. Screening and verification take time, and an address
+that fails screening will not be approved at all. Register destinations well
+before you need them.
+</Warning>
+
+## Naming your addresses
+
+Each whitelisted address carries a label.
+
+<Warning>
+Labels must be **unique** within your account. Submitting a new address under a
+label already in use is the usual cause of an apparent "only one wallet was
+accepted" outcome — the second submission collides with the first on name rather
+than on address. Use distinct, descriptive labels such as
+`Treasury-USDC-Ethereum` rather than `Wallet 1`.
+</Warning>
+
+## Asset and network binding
+
+An approved address is approved for **one asset on one network**. The same
+address string used for a different asset or a different chain requires a
+separate registration.
+
+<Warning>
+This is not bureaucracy. The same address can be syntactically valid on several
+EVM networks while funds are only recoverable on one. Binding the approval to a
+specific network is what prevents an unrecoverable transfer.
+</Warning>
+
+## Ongoing screening
+
+Whitelisted addresses are re-screened over time. An address that later becomes
+associated with sanctioned or illicit activity can be suspended, and pending
+withdrawals to it stopped.
+
+## Removing an address
+
+Request removal through the platform or your account manager as soon as an
+address is no longer in use. Keeping the whitelist tight is a meaningful control,
+not housekeeping.
+
+## Over the API
+
+Reference an approved address by `AddressID` on
+[`NewWithdrawRequest`](/trading-api/websocket/commands#newwithdrawrequest).
+`AddressID` and inline `RoutingInfo` are mutually exclusive — prefer `AddressID`,
+since routing information that does not map to an approved address will not
+short-circuit the approval process.

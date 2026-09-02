@@ -1,0 +1,54 @@
+---
+title: "Changelog"
+description: "Platform and API changes, newest first."
+---
+
+<Update label="2026-09-02" description="Documentation launch">
+
+## Documentation site launched
+
+This site replaces the API documentation previously distributed as a PDF and the
+reference page inside the client application.
+
+**Trading API** — full reference for the WebSocket, REST, and FIX interfaces,
+including every stream and command:
+
+- [Authentication](/trading-api/authentication) with the four signing pitfalls
+  that cause most `401` responses
+- [Connection lifecycle](/trading-api/connection-lifecycle) — heartbeats,
+  half-open detection, resubscription
+- Complete stream reference — [MarketDataSnapshot](/trading-api/websocket/streams/market-data-snapshot),
+  [Security](/trading-api/websocket/streams/security),
+  [Quote](/trading-api/websocket/streams/quote),
+  [Order](/trading-api/websocket/streams/order),
+  [Trade](/trading-api/websocket/streams/trade),
+  [Balance](/trading-api/websocket/streams/balance),
+  [Exposure](/trading-api/websocket/streams/credit)
+- All [WebSocket commands](/trading-api/websocket/commands) with payloads
+- Full [REST endpoint](/trading-api/rest/endpoints) list
+- [Errors](/trading-api/errors) including the complete rejection-reason tables
+
+**New: Postman collection.** An importable
+[collection and sandbox environment](/trading-api/sdks/postman) with request
+signing wired into a collection-level pre-request script.
+
+**New: reference clients.** Production-shaped
+[Python](/trading-api/sdks/python) and
+[TypeScript](/trading-api/sdks/typescript) WebSocket clients with reconnection,
+resubscription, and half-open detection.
+
+**Knowledge Center** — onboarding, entities, trading, settlement, whitelisting,
+and compliance guides.
+
+**Client API** — the design contract for our first-party REST API, published for
+review before implementation.
+
+<Note>
+Corrections to previously published documentation: the REST surface is
+substantially larger than the single OHLCV endpoint previously documented — see
+[REST endpoints](/trading-api/rest/endpoints). Ping and pong command names are
+capitalised (`Ping` / `Pong`), and pings are optional rather than required to
+keep a session alive.
+</Note>
+
+</Update>

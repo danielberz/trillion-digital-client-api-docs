@@ -1,0 +1,82 @@
+---
+title: "Pagination"
+description: "Cursor-based paging on list endpoints."
+---
+
+<Warning>
+This API is in design and not yet available. See
+[Overview](/client-api/overview).
+</Warning>
+
+List endpoints are cursor-paginated.
+
+## Request
+
+<ParamField query="page_size" type="integer">
+  Results per page. Default 25, maximum 100.
+</ParamField>
+<ParamField query="starting_after" type="string">
+  Return results after this object ID — the next page.
+</ParamField>
+<ParamField query="ending_before" type="string">
+  Return results before this object ID — the previous page.
+</ParamField>
+
+## Response
+
+```json
+{
+  "object": "list",
+  "data": [
+    { "id": "trd_01k9m2p7q3r4s5t6v7w8x9y0z1", "object": "trade" }
+  ],
+  "has_more": true,
+  "next_cursor": "trd_01k9m2p7q3r4s5t6v7w8x9y0z1"
+}
+```
+
+<ResponseField name="data" type="object[]">The page of results.</ResponseField>
+<ResponseField name="has_more" type="boolean">
+  Whether further results exist.
+</ResponseField>
+<ResponseField name="next_cursor" type="string">
+  Pass as `starting_after` to fetch the next page. `null` on the last page.
+</ResponseField>
+
+## Iterating
+
+```python
+def iter_all(session, url):
+    cursor = None
+    while True:
+        params = {"page_size": 100}
+        if cursor:
+            params["starting_after"] = cursor
+
+        page = session.get(url, params=params).json()
+        yield from page["data"]
+
+        if not page["has_more"]:
+            return
+        cursor = page["next_cursor"]
+```
+
+<Warning>
+Terminate on `has_more`, not on an empty `data` array or on a page shorter than
+`page_size`. A short page is not a reliable end-of-results signal, and a loop
+that assumes otherwise will silently truncate — which in a reconciliation job
+means quietly missing records rather than failing loudly.
+</Warning>
+
+## Why cursors rather than offsets
+
+Offset paging is unstable when the underlying data changes mid-iteration:
+inserts shift rows across page boundaries, so records are skipped or repeated.
+Cursors anchor on an object ID, so a long-running export stays consistent even
+while new records arrive.
+
+<Tip>
+IDs are sortable by creation time, so a cursor is also a meaningful position
+marker. A daily job can store the last ID it processed and resume from it,
+rather than re-scanning by date.
+</Tip>

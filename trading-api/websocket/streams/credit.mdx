@@ -1,0 +1,53 @@
+---
+title: "Exposure"
+sidebarTitle: "Credit & exposure"
+description: "Real-time credit utilisation against your limit."
+---
+
+Streams your current credit utilisation and limit. Subscribe to this if you trade
+on credit — an order that would breach the limit is rejected with
+`OrderExceedsLimit`.
+
+## Subscribe
+
+```json
+{
+  "reqid": 25,
+  "type": "subscribe",
+  "streams": [{ "name": "Exposure" }]
+}
+```
+
+### Parameters
+
+None.
+
+## Response
+
+<ResponseField name="ExposureCurrency" type="string" required>
+  The currency all exposure values are expressed in.
+</ResponseField>
+<ResponseField name="Exposure" type="decimal" required>
+  Current credit utilisation, in `ExposureCurrency`.
+</ResponseField>
+<ResponseField name="ExposureLimit" type="decimal" required>
+  Credit limit, in `ExposureCurrency`.
+</ResponseField>
+<ResponseField name="Status" type="string" required>
+  `Online` or `Offline`.
+</ResponseField>
+<ResponseField name="Timestamp" type="datetime" required>
+  When credit was last updated.
+</ResponseField>
+
+<Warning>
+When `Status` is `Offline` the exposure figures are stale. Do not use them to
+gate order submission — either pause trading or fall back to your own
+conservative estimate until the stream returns to `Online`.
+</Warning>
+
+<Tip>
+Headroom is `ExposureLimit − Exposure`. Checking it before submitting is cheaper
+than handling an `OrderExceedsLimit` rejection after the fact, and it lets you
+size the order down rather than losing it entirely.
+</Tip>

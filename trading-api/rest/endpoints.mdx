@@ -1,0 +1,147 @@
+---
+title: "Endpoints"
+description: "The REST surface, grouped by resource."
+---
+
+All paths are relative to the environment base URL and require the three
+authentication headers.
+
+## Platform
+
+<ParamField path="GET /v1/time" type="endpoint">
+  Server time. Takes no parameters — the best first call for verifying that your
+  signing implementation works.
+</ParamField>
+
+<ParamField path="GET /v1/status" type="endpoint">
+  Platform status.
+</ParamField>
+
+## Reference data
+
+<ParamField path="GET /v1/markets" type="endpoint">
+  Available markets. Returns `Market` rows with `Name`, `DisplayName`, `Type`
+  (`Exchange`, `Dealer`, `Custodian`, `InternalAlgo`, `External`, `Dark`), and a
+  `Capabilities` object indicating support for market data, orders, RFQ,
+  balances, and transfers.
+</ParamField>
+
+<ParamField path="GET /v1/currencies" type="endpoint">
+  Known currencies with their increments. Same shape as the
+  [`Currency`](/trading-api/websocket/streams/currency) stream.
+</ParamField>
+
+<ParamField path="GET /v1/counterparties" type="endpoint">
+  Counterparties visible to your account.
+</ParamField>
+
+<ParamField path="GET /v1/counterparties/{counterpartyId}" type="endpoint">
+  A single counterparty.
+</ParamField>
+
+## Market data
+
+<ParamField path="GET /v1/symbols/{symbol}/ohlcv/{resolution}" type="endpoint">
+  Historical OHLCV bars.
+
+  ```
+  https://sandbox.trading.trilliondigital.io/v1/symbols/BTC-USD/ohlcv/1D
+  ```
+
+  `symbol` is a security symbol such as `BTC-USD`; `resolution` is a bar size
+  such as `1D`.
+</ParamField>
+
+## Orders
+
+<ParamField path="GET /v1/orders" type="endpoint">
+  Order history. Accepts `StartDate`, `EndDate`, `Symbol`, `Statuses`, `OrderID`,
+  and `RFQID` filters. Filter on open statuses to retrieve working orders.
+</ParamField>
+
+<ParamField path="POST /v1/orders" type="endpoint">
+  Submit an order. Body matches
+  [`NewOrderSingle`](/trading-api/websocket/commands#neworldersingle).
+</ParamField>
+
+<ParamField path="DELETE /v1/orders" type="endpoint">
+  Cancel an order. Body matches
+  [`OrderCancelRequest`](/trading-api/websocket/commands#ordercancelrequest).
+</ParamField>
+
+<Warning>
+Order entry is available over REST, but the **result is not in the response**.
+Fills and state changes are published on the `Order` and `ExecutionReport`
+streams. A REST-only client has no way to observe its own executions in real
+time. Use the WebSocket for trading.
+</Warning>
+
+## RFQ
+
+<ParamField path="GET /v1/rfqs" type="endpoint">
+  RFQ history. Accepts `StartDate`, `EndDate`, `Symbol`, and `RFQID`.
+</ParamField>
+
+<ParamField path="GET /v1/quotes" type="endpoint">
+  Quote history, same filters as `/v1/rfqs`.
+</ParamField>
+
+<ParamField path="POST /v1/quotes/request" type="endpoint">
+  Open an RFQ. Body matches
+  [`QuoteRequest`](/trading-api/websocket/commands#quoterequest).
+</ParamField>
+
+<ParamField path="DELETE /v1/quotes/request" type="endpoint">
+  Cancel an RFQ. Requires both `QuoteReqID` and `RFQID`.
+</ParamField>
+
+## Post-trade
+
+<ParamField path="GET /v1/trades" type="endpoint">
+  Trade history. Accepts `StartDate`, `EndDate`, `Symbol`, `OrderID`, and
+  `RFQID`. Row shape matches the [`Trade`](/trading-api/websocket/streams/trade)
+  stream.
+</ParamField>
+
+<ParamField path="GET /v1/trade-allocations" type="endpoint">
+  Trade allocations, filterable by trade, order, RFQ, or sub-account.
+</ParamField>
+
+## Balances and transfers
+
+<ParamField path="GET /v1/customer-balances" type="endpoint">
+  Current balances. Accepts `MarketAccount`, `Currency`, and `EquivalentCurrency`.
+</ParamField>
+
+<ParamField path="GET /v1/customer-balances/transactions" type="endpoint">
+  Balance transactions — deposits, withdrawals, adjustments.
+</ParamField>
+
+<ParamField path="POST /v1/customer-balances/transactions" type="endpoint">
+  Create a withdrawal or deposit. The `Type` field selects which.
+</ParamField>
+
+<ParamField path="POST /v1/customer-balances/transactions/{transactionId}/cancel" type="endpoint">
+  Cancel a transaction. Only `PendingApproval` transactions can be cancelled.
+</ParamField>
+
+<ParamField path="GET /v1/customer-transactions" type="endpoint">
+  Customer transaction history.
+</ParamField>
+
+## Credit
+
+<ParamField path="GET /v1/customer-credit" type="endpoint">
+  Current credit utilisation and limits.
+</ParamField>
+
+<ParamField path="GET /v1/customer-credit/limits" type="endpoint">
+  Configured credit limits.
+</ParamField>
+
+<Note>
+Availability varies by entitlement. A `403` means your key is not permissioned for
+that resource rather than that the path is wrong — contact
+[support@trilliondigital.io](mailto:support@trilliondigital.io) to review your
+key's scope.
+</Note>

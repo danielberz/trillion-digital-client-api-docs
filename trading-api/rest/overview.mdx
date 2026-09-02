@@ -1,0 +1,74 @@
+---
+title: "REST API"
+sidebarTitle: "Overview"
+description: "Reference data, historical queries, and OHLCV bars over HTTP."
+---
+
+The REST API covers reference data and historical queries. Real-time data and
+order entry belong on the
+[WebSocket API](/trading-api/websocket/overview).
+
+```
+https://sandbox.trading.trilliondigital.io/v1     # sandbox
+https://trading.trilliondigital.io/v1             # production
+```
+
+## Authentication
+
+Identical to the WebSocket handshake — `ApiKey`, `ApiTimestamp`, and `ApiSign`
+headers on every request. The signed string differs only in that query and body
+are appended when non-empty:
+
+```
+GET\n<ApiTimestamp>\n<host>\n<path>[\nquery][\nbody]
+```
+
+See [Authentication](/trading-api/authentication) for working examples.
+
+<Warning>
+Every request needs a freshly generated timestamp and signature. There is no
+session and no token to cache — a signature is valid only for the moment it was
+made.
+</Warning>
+
+## Response envelope
+
+Collection endpoints return the same envelope as WebSocket streams.
+
+```json
+{
+  "type": "Trade",
+  "ts": "2021-09-14T22:20:49.862930Z",
+  "data": [ /* rows */ ]
+}
+```
+
+<ResponseField name="type" type="string" required>The entity type in `data`.</ResponseField>
+<ResponseField name="ts" type="datetime" required>Server timestamp.</ResponseField>
+<ResponseField name="data" type="object[]" required>
+  The rows. Always an array, even for a single result.
+</ResponseField>
+
+Row shapes match their WebSocket equivalents — a `Trade` row from
+`GET /v1/trades` has the same fields as one from the
+[`Trade`](/trading-api/websocket/streams/trade) stream.
+
+## When to use REST over WebSocket
+
+<CardGroup cols={2}>
+  <Card title="Good fit for REST" icon="check">
+    One-off reference data at startup, historical backfill, scheduled
+    reconciliation jobs, and health checks.
+  </Card>
+  <Card title="Use WebSocket instead" icon="xmark">
+    Live prices, order entry, and anything you would otherwise poll for. Polling
+    REST for state that a stream already pushes is slower and heavier for both
+    sides.
+  </Card>
+</CardGroup>
+
+<Note>
+Endpoint availability depends on your key's entitlements. If a call returns
+`403`, the path is correct but your key is not permissioned for it — contact
+[support@trilliondigital.io](mailto:support@trilliondigital.io).
+</Note>

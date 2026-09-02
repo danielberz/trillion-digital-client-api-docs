@@ -1,0 +1,73 @@
+---
+title: "FIX API"
+sidebarTitle: "Overview"
+description: "FIX 4.4 sessions for institutional market data and order execution."
+---
+
+Trillion Digital supports the Financial Information eXchange protocol for
+institutional order flow. The FIX specification is version **2.50**, built on
+**FIX 4.4**.
+
+<Note>
+FIX suits firms with existing FIX infrastructure — an OMS or EMS that already
+speaks it. If you are building a new integration from scratch, the
+[WebSocket API](/trading-api/websocket/overview) is faster to implement and
+exposes more of the platform.
+</Note>
+
+## Connectivity
+
+Connectivity is over the internet. Trillion Digital acts as the **acceptor** for
+all FIX sessions; your system is the initiator.
+
+The following are provided during onboarding:
+
+- Hostname
+- Port number
+- `SenderCompID`
+- `TargetCompID`
+- API key and secret for logon authentication
+
+<Warning>
+FIX credentials are environment-specific, exactly as REST and WebSocket keys are.
+Sandbox session details will not connect to production.
+</Warning>
+
+## Supported message types
+
+### Client to Trillion Digital
+
+| Message | MsgType | Purpose |
+| --- | --- | --- |
+| Logon | `A` | Authenticate and open the session |
+| NewOrderSingle | `D` | Submit an order |
+| OrderCancelRequest | `F` | Cancel an order |
+| MarketDataRequest | `V` | Subscribe to market data |
+| SecurityListRequest | `x` | Request tradeable securities |
+
+### Trillion Digital to client
+
+| Message | MsgType | Purpose |
+| --- | --- | --- |
+| Logon | `A` | Session accepted |
+| ExecutionReport | `8` | Order state and fills |
+| OrderCancelReject | `9` | Cancel refused |
+| MarketDataSnapshotFullRefresh | `W` | Market data |
+| SecurityList | `y` | Security definitions |
+
+## Getting started
+
+<Steps>
+  <Step title="Request session details">
+    Email [support@trilliondigital.io](mailto:support@trilliondigital.io) for
+    sandbox FIX connectivity.
+  </Step>
+  <Step title="Implement logon signing">
+    See [Logon](/trading-api/fix/logon) — the signature differs from the REST and
+    WebSocket construction.
+  </Step>
+  <Step title="Certify against sandbox">
+    Exercise logon, security list, market data, order entry, and cancel before
+    requesting production access.
+  </Step>
+</Steps>
