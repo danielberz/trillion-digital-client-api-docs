@@ -1,0 +1,15 @@
+/*
+ * Trillion Digital documentation — custom styles.
+ */
+
+/*
+ * Header logo.
+ *
+ * Mintlify renders the navbar logo at h-7 (28px). The Trillion wordmark is
+ * wide and light-weight, so it reads smaller than the default at that height.
+ * Scaled 20% to 33.6px. !important is required to beat the Tailwind utility
+ * class on the element itself.
+ */
+.nav-logo {
+  height: 33.6px !important;
+}
