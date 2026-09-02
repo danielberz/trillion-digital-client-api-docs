@@ -20,12 +20,22 @@
         "version": "Latest",
         "tabs": [
           {
+            "tab": "Home",
+            "groups": [
+              {
+                "group": "Home",
+                "pages": [
+                  "index"
+                ]
+              }
+            ]
+          },
+          {
             "tab": "Knowledge Center",
             "groups": [
               {
                 "group": "Get started",
                 "pages": [
-                  "index",
                   "choosing-an-api",
                   "guides/overview",
                   "guides/getting-started"

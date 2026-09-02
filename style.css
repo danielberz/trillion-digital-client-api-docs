@@ -1,9 +1,9 @@
 /*
  * Trillion Digital documentation — custom styles.
  *
- * Scope is deliberately narrow. Everything here fixes a concrete legibility
- * problem in a dense API reference; none of it restyles Mintlify for its own
- * sake. Every rule works in both light and dark themes.
+ * Scope is deliberately narrow. Everything here fixes a concrete legibility or
+ * layout problem in a dense API reference; none of it restyles Mintlify for its
+ * own sake. Every rule works in both light and dark themes.
  */
 
 /* ---------------------------------------------------------------------------
@@ -11,8 +11,7 @@
  *
  * Mintlify renders the navbar logo at h-7 (28px). The Trillion wordmark is wide
  * and light-weight, so it reads smaller than the default at that height. Scaled
- * 20% to 33.6px. !important is required to beat the Tailwind utility class on
- * the element itself.
+ * 20% to 33.6px. !important beats the Tailwind utility on the element itself.
  * ------------------------------------------------------------------------- */
 .nav-logo {
   height: 33.6px !important;
@@ -21,22 +20,19 @@
 /* ---------------------------------------------------------------------------
  * Reference tables
  *
- * Mintlify sets [&_td]:min-w-[150px] on every table. That is sensible for prose
- * tables but wrong for FIX tag tables (Tag | Field | Req | Description) and for
- * the order state-change matrices, which have seven narrow numeric columns —
- * 7 x 150px overflows the 1120px content column and the table gets clipped.
- *
- * Letting cells size to their content takes the state matrices from a ~1500px
- * minimum down to ~1165px. Mintlify already wraps tables in a horizontally
- * scrollable container, so this is purely about needing less of that scroll.
+ * Mintlify sets [&_td]:min-w-[150px] on every table. Sensible for prose tables,
+ * wrong for FIX tag tables and the ten-column order state-change matrices.
+ * Letting cells size to content takes those from a ~1500px minimum to ~1165px.
+ * Mintlify already supplies a horizontal scroll container; this just means less
+ * of it is needed.
  * ------------------------------------------------------------------------- */
 table td,
 table th {
   min-width: 0 !important;
 }
 
-/* First column of a reference table is an identifier — tag number, field name,
- * status code. Keep it on one line so it stays scannable. */
+/* First column is an identifier — tag number, field name, status code. Keep it
+ * on one line so it stays scannable. */
 table td:first-child,
 table th:first-child {
   white-space: nowrap;
@@ -47,13 +43,12 @@ table td:last-child {
   min-width: 18rem !important;
 }
 
-/* Tag numbers and numeric columns line up under each other. */
 table td {
   font-variant-numeric: tabular-nums;
 }
 
-/* Inline code inside tables is doing identifier work, not prose work — tighten
- * it so a table of forty enum values does not read as a wall of pills. */
+/* Inline code in tables is identifier work, not prose — tighten it so a table
+ * of forty enum values does not read as a wall of pills. */
 table code {
   font-size: 0.8125rem;
   padding-inline: 0.3em;
@@ -63,10 +58,9 @@ table code {
 /* ---------------------------------------------------------------------------
  * Section rhythm
  *
- * Reference pages run to dozens of headings. Without extra separation an h2
- * reads as just-another-bold-line and the page becomes hard to scan. Give major
- * sections real air plus a hairline rule; leave h3 alone so field groups inside
- * a section stay visually subordinate.
+ * Reference pages run to dozens of headings. Without separation an h2 reads as
+ * just-another-bold-line. Give major sections air plus a hairline rule; leave
+ * h3 alone so field groups stay visually subordinate.
  * ------------------------------------------------------------------------- */
 main h2 {
   margin-top: 3rem !important;
@@ -74,7 +68,6 @@ main h2 {
   border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
 }
 
-/* The first h2 on a page follows the intro, not another section — no rule. */
 main h2:first-of-type {
   border-top: none;
   padding-top: 0;
@@ -87,9 +80,6 @@ main h3 {
 
 /* ---------------------------------------------------------------------------
  * Cards
- *
- * The landing and "which API" pages lean on card grids for navigation. A hover
- * affordance makes them read as destinations rather than boxes.
  * ------------------------------------------------------------------------- */
 #content-area a[href] > div,
 .card {
@@ -105,32 +95,35 @@ main h3 {
 /* ---------------------------------------------------------------------------
  * Code blocks
  *
- * Signing examples and FIX wire messages are read line by line and compared
- * character by character. A little more leading materially helps.
+ * Signing examples and FIX wire messages are compared character by character.
+ * A little more leading materially helps.
  * ------------------------------------------------------------------------- */
 pre code {
   line-height: 1.6;
 }
 
-/* FIX example messages are long single lines of tag=value^A. Let them wrap on
- * narrow viewports instead of forcing a horizontal scroll across the page. */
+/* FIX examples are long single lines of tag=value^A — wrap rather than forcing
+ * a horizontal scroll across the page. */
 pre code .line {
   word-break: break-word;
 }
 
 /* ---------------------------------------------------------------------------
- * Home page hero
+ * Home page
  *
  * index.mdx uses `mode: "custom"`, which hands us a blank canvas — no sidebar,
- * no table of contents, and no container padding. Everything below therefore
- * has to establish its own layout.
+ * no table of contents, no container padding — so the page establishes its own
+ * layout here.
+ *
+ * Unlike the docs shell below, the landing page stays a centred, constrained
+ * column. A hero that runs the full width of a wide display makes the artwork
+ * dominate and the copy hard to scan.
  * ------------------------------------------------------------------------- */
-
 .td-hero,
 .td-home-body {
-  max-width: 76rem;
+  max-width: 68rem;
   margin-inline: auto;
-  padding-inline: 1.5rem;
+  padding-inline: 2rem;
 }
 
 .td-hero {
@@ -184,32 +177,24 @@ pre code .line {
   transform: translateY(-1px);
 }
 
-/* The artwork inherits currentColor, so the whole illustration re-tints with
- * the theme instead of needing a second asset. */
+/* Brand artwork. Source is 1584x396 (4:1). */
 .td-hero-art {
   margin-top: 3rem;
   border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
   border-radius: 0.75rem;
   overflow: hidden;
-  background: color-mix(in srgb, currentColor 3%, transparent);
+  line-height: 0;
 }
 
-.td-hero-art svg {
+/* Hold the source ratio so nothing is cropped at typical widths, then cap the
+ * height — object-fit: cover trims top and bottom rather than letterboxing.
+ * The art is dark on both themes, so it needs no light/dark variant. */
+.td-hero-art img {
   display: block;
   width: 100%;
-  height: clamp(240px, 34vw, 420px);
-}
-
-.td-hero-art .td-grid {
-  opacity: 0.22;
-}
-
-.td-hero-art .td-edge {
-  opacity: 0.9;
-}
-
-.td-hero-art .td-mid {
-  opacity: 0.35;
+  aspect-ratio: 4 / 1;
+  max-height: 340px;
+  object-fit: cover;
 }
 
 .td-home-body {
@@ -217,8 +202,8 @@ pre code .line {
   padding-bottom: 6rem;
 }
 
-/* The custom-mode canvas has no h2 context, so the section rules defined
- * earlier would float against nothing. Re-establish spacing locally. */
+/* The custom-mode canvas has no h2 context, so the section rules above would
+ * float against nothing. Re-establish spacing locally. */
 .td-home-body h2 {
   margin-top: 3.5rem !important;
 }
@@ -233,20 +218,19 @@ pre code .line {
 }
 
 /* ---------------------------------------------------------------------------
- * Page width
+ * Docs shell width
  *
- * Mintlify caps the docs shell (sidebar + content + TOC) at max-width 1472px
- * and centres it, which on a wide display leaves ~230px of dead space each side
- * and pushes the sidebar well off the left edge.
+ * Mintlify caps the shell (sidebar + content + TOC) at max-width 1472px and
+ * centres it, which on a wide display leaves ~230px of dead space each side and
+ * pushes the sidebar well off the left edge.
  *
- * Release the cap so the shell runs near full-bleed and the sidebar sits close
- * to the viewport edge. The prose column inside `main` has its own narrower
- * constraint, so line length is unaffected — the extra room goes to the
- * sidebar position and to wide reference tables, which is exactly where it is
- * useful.
+ * Release the cap so the shell runs near full-bleed with the sidebar at the
+ * edge. The prose column inside `main` keeps its own narrower constraint, so
+ * line length is unaffected — the extra room goes to the sidebar position and
+ * to wide reference tables. The landing page above is deliberately excluded.
  *
- * `:has(> main)` targets the shell without depending on Mintlify's generated
- * Tailwind class names, which are not stable across releases.
+ * Targeted with :has() rather than Mintlify's generated Tailwind class names,
+ * which are not stable across releases.
  * ------------------------------------------------------------------------- */
 @media (min-width: 1024px) {
   div:has(> main) {
@@ -254,12 +238,9 @@ pre code .line {
     margin-inline: 0 !important;
     padding-inline: 1.5rem !important;
   }
-}
 
-/* The navbar sits in its own `max-w-8xl mx-auto` wrapper, so releasing only the
- * body shell above leaves the logo centred while the sidebar hugs the edge.
- * Scoped with :has(.nav-logo) so it cannot catch an unrelated max-w-8xl. */
-@media (min-width: 1024px) {
+  /* The navbar sits in its own `max-w-8xl mx-auto` wrapper, so releasing only
+   * the shell leaves the logo centred while the sidebar hugs the edge. */
   .max-w-8xl:has(.nav-logo) {
     max-width: none !important;
     margin-inline: 0 !important;
@@ -269,12 +250,5 @@ pre code .line {
    * lines up with the sidebar rather than sitting 24px further in. */
   .max-w-8xl:has(.nav-logo) [class*="px-12"] {
     padding-inline: 1.5rem !important;
-  }
-
-  /* The home page is custom-mode and set its own 76rem column, which now reads
-   * narrow against a full-bleed navbar. Align it with everything else. */
-  .td-hero,
-  .td-home-body {
-    max-width: none;
   }
 }
