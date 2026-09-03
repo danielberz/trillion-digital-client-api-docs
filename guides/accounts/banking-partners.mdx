@@ -1,0 +1,126 @@
+---
+title: "Banking partners"
+description: "Which institutions hold client fiat, what that determines, and which questions only your onboarding documentation can answer."
+---
+
+Client-designated fiat is held with regulated banking partners. Which of them
+apply to you follows from the Trillion Digital
+[entity](/guides/accounts/entities) you face — settled at onboarding, not chosen
+at instruction time. The rails you can instruct, the internal networks a
+beneficiary is reachable on, and the currencies you can hold all sit downstream
+of that relationship.
+
+## Partners the platform integrates with
+
+Dedicated integrations exist for **Anchorage, Cobre, Cross River, Customers Bank,
+Erebor and FV Bank**. An integration means the platform instructs payments and
+reads balances against that bank programmatically rather than through a file drop
+or a manual process.
+
+<Warning>
+**A partner on this list is not a partner on your account.** This is what the
+platform integrates with, not what holds your balances. Which institutions hold
+yours depends on your entity, your currencies and your commercial terms, and your
+onboarding documentation is the record of it.
+
+The cost of assuming otherwise surfaces at registration: you register a
+beneficiary expecting an internal rail, the platform registers it for a wire
+instead, and every subsequent payment to that beneficiary carries
+correspondent-banking cost, delay and the failure modes an on-us transfer never
+touches. Ask your account manager which institutions apply before you build an
+operational assumption on one.
+</Warning>
+
+<Note>
+An integration is not the same thing as an internal settlement network. An
+integration is *how the platform talks to a bank*; an internal network is an
+*addressing mechanism* for a beneficiary who banks where we bank.
+[Fiat settlement](/guides/settlement/fiat) documents internal networks at
+institutions with no dedicated integration here, and neither list tells you what
+is enabled on your account.
+</Note>
+
+## The partner determines the rails
+
+Currency does not determine reachability on its own. USD can move by Fedwire,
+ACH, FedNow, RTP or SWIFT, or across any of several internal networks — which of
+those are open to you is a function of who we bank with for your entity and who
+your beneficiary banks with.
+
+[Fiat settlement](/guides/settlement/fiat) sets out the full rail and currency
+set the platform supports, how a rail is chosen for a given payment, and what
+each one needs from a registration. What is enabled on your account is a narrower
+set; your account manager is authoritative on it.
+
+## Your entity determines the banking relationship
+
+Each Trillion Digital entity banks with its own institutions — see
+[Entities](/guides/accounts/entities).
+
+<Warning>
+Groups facing two entities should expect **the same beneficiary to behave
+differently on each**. A counterparty reachable on an internal network from one
+account may be reachable only by wire from the other, because that entity does
+not bank at the same institution. The addressing details are not the same
+details, so copying an instruction between accounts produces a registration that
+fails validation or, worse, one that is accepted and then routes expensively.
+</Warning>
+
+## Digital assets
+
+Crypto settles on-chain to addresses that have been
+[whitelisted](/guides/settlement/wallet-whitelisting), screened, and bound to one
+asset on one network. There is no ad-hoc withdrawal path — see
+[Crypto settlement](/guides/settlement/crypto) for how a transfer progresses and
+where it stops being cancellable, and
+[Assets and networks](/guides/trading/assets-and-networks) for the assets and
+networks the platform models and where a wrong-chain transfer is unrecoverable.
+
+Both of those are lists of what the platform supports. What is enabled for you is
+narrower: the [`Security`](/trading-api/websocket/streams/security) stream and
+your terminal's instrument selector are authoritative for trading — see
+[Instruments](/guides/trading/instruments) — and your account manager for which
+networks you can settle on.
+
+## Segregation
+
+Accounts, balances, settlement instructions and trade records belong to one
+entity and do not commingle across entities. Balances are not fungible between
+them, a destination registered against one is not visible to the other, and API
+credentials are issued per entity account. [Entities](/guides/accounts/entities)
+covers the operational consequences.
+
+<Note>
+That is a statement about how the platform is organised operationally. It is not
+a statement about legal title, insolvency treatment, or how funds are held by any
+banking partner — see below.
+</Note>
+
+## What this page does not tell you
+
+Deliberately absent, because they are legal and regulatory statements rather than
+platform behaviour:
+
+- whether balances attract deposit insurance, and under which scheme
+- the regulatory status, licences or permissions of Trillion Digital or any
+  banking partner
+- how funds would be treated in an insolvency of Trillion Digital, an entity, or
+  a partner institution
+- whether client-money or equivalent rules apply to your relationship
+- which named institution holds your balance, in whose name it is held, and
+  whether the account is segregated or pooled
+- who custodies digital assets held on your account
+
+Those are answered in the documentation executed at onboarding, which is specific
+to your entity and your relationship. For diligence, route the request through
+your account manager, or
+[compliance@trilliondigital.io](mailto:compliance@trilliondigital.io) for
+documentation already issued to you.
+
+<Warning>
+Do not cite this page — or any product documentation — as the source for an
+answer in a diligence questionnaire, a regulatory filing, or an investment
+committee paper. An answer sourced from it is one you cannot support when a
+counterparty's own reviewer asks for the underlying document. Request the
+document.
+</Warning>

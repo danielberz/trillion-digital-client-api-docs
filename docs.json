@@ -46,6 +46,7 @@
                 "pages": [
                   "guides/accounts/onboarding",
                   "guides/accounts/entities",
+                  "guides/accounts/banking-partners",
                   "guides/accounts/users-and-roles"
                 ]
               },
@@ -56,6 +57,8 @@
                   "guides/trading/how-otc-trading-works",
                   "guides/trading/rfq-workflow",
                   "guides/trading/instruments",
+                  "guides/trading/assets-and-networks",
+                  "guides/trading/pricing-and-fees",
                   "guides/trading/trade-lifecycle"
                 ]
               },
@@ -71,6 +74,13 @@
                 ]
               },
               {
+                "group": "Operations",
+                "pages": [
+                  "guides/reporting",
+                  "guides/operating-hours"
+                ]
+              },
+              {
                 "group": "Compliance & security",
                 "pages": [
                   "guides/compliance/kyc-kyb",
@@ -81,7 +91,8 @@
                 "group": "Support",
                 "pages": [
                   "guides/support/contact",
-                  "guides/support/faq"
+                  "guides/support/faq",
+                  "guides/glossary"
                 ]
               }
             ]

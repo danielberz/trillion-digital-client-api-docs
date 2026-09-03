@@ -1,0 +1,129 @@
+---
+title: "Pricing and fees"
+sidebarTitle: "Pricing and fees"
+description: "How a price is constructed, where the fee lands in the record, and which field is authoritative."
+---
+
+Rates, spreads, and fee schedules are commercial terms agreed for your account at
+onboarding. They are not documented here — your account manager and your terms of
+business are authoritative on what you pay.
+
+## A quote is all-in for the size you asked for
+
+You ask for a price in a specific size and receive one price for that whole size.
+There is no walk-up through a book, no partial fills at successively worse levels,
+and no slippage caused by your own order. The number you accept is the number you
+trade at, for the full clip, until `ValidUntilTime` — see
+[How OTC trading works](/guides/trading/how-otc-trading-works).
+
+The consequence is a comparison trap. A quote for size is not comparable to the
+top-of-book price on a venue, because top-of-book is available only in
+top-of-book size. The honest benchmark is the **all-in cost of working the same
+quantity** on that venue — exchange fees, the levels you would actually clear
+through, and the market impact of showing the order — against the single quoted
+price here.
+
+The price is made for the quantity in the request, so
+[which currency you express that quantity in](/guides/trading/rfq-workflow#specifying-size)
+changes what you are asking for.
+
+## Which field carries which number
+
+Four fields express price or cost, and they do not mean the same thing. Using the
+wrong one does not produce an error — it produces a plausible number that is
+wrong in a consistent direction.
+
+| Field | Stream | Fees | Use it for |
+| --- | --- | --- | --- |
+| `TradedPx` | [`Quote`](/trading-api/websocket/streams/quote), on a filled RFQ | **Includes** fees | All-in economics off the quote itself |
+| `AvgPx` | [`ExecutionReport`](/trading-api/websocket/streams/order) | **Excludes** fees | Execution quality, against other ex-fee prices |
+| `Fee` + `FeeCurency` | [`Trade`](/trading-api/websocket/streams/trade) | The fee, stated explicitly | P&L, invoice checks, reconciliation |
+| `LastFee` + `LastFeeCurency` | [`ExecutionReport`](/trading-api/websocket/streams/order) | Fee on that fill only | Attributing cost fill by fill |
+
+<Warning>
+**Reconciling P&L from `AvgPx` understates your cost, and nothing will tell you.**
+The error is one-directional and scales with volume, so it does not net out over
+time and it does not surface as a break — your numbers simply drift cheap against
+the statement. Compute economics from the
+[`Trade`](/trading-api/websocket/streams/trade) record, which carries `Amount`
+and `Fee` explicitly.
+</Warning>
+
+<Warning>
+**The field is spelled `FeeCurency` on the wire — one `r`.** So are
+`LastFeeCurency` and the cumulative `FeeCurency` on the order stream. A
+deserialiser looking for `FeeCurrency` finds nothing, and in a language that
+returns `undefined` rather than raising, that becomes a fee with no currency —
+which downstream code usually treats as the trade currency. Match the wire
+spelling and alias it in your own model rather than correcting it in transit.
+</Warning>
+
+## Fee currency is its own field
+
+A trade carries three currency fields: `Currency` for the quantity,
+`AmountCurrency` for the amount, and `FeeCurency` for the fee. The third is not
+constrained to match either of the other two. Which currency your fees are
+charged in is a commercial term — ask your account manager.
+
+<Warning>
+`LastFeeCurency` on an execution report **may differ from the cumulative
+`FeeCurency`** on the same order. An accumulator that sums `LastFee` across fills
+into one running total is adding unlike currencies as soon as that happens, and
+the result is a number that looks like a fee and is not one. Key per-fill
+accumulation on the (fee, currency) pair, or take the cumulative figure from the
+[`Trade`](/trading-api/websocket/streams/trade) record instead of building your
+own.
+</Warning>
+
+## The Trade record is the economic record
+
+`Trade` carries `Quantity`, `Amount`, `Fee`, `FeeCurency`, and `TradeStatus` —
+the economics of the fill in one message, which the order streams do not provide.
+
+<Note>
+`TradeStatus` can move to `Canceled` after a trade has appeared as `Pending` or
+`Confirmed`. A cost or P&L series keyed on the first message it saw will carry
+fees for trades that were never settled. Key on `TradeID` and apply the latest
+status — see [Trade lifecycle](/guides/trading/trade-lifecycle).
+</Note>
+
+Pricing is not a function of the channel, so choose one on workflow grounds — see
+[Execution channels](/guides/trading/execution-channels).
+
+## Network fees on crypto withdrawals
+
+An on-chain withdrawal pays a network fee to the validators or miners of that
+chain. It is not a Trillion Digital charge and it varies with congestion. Where
+an asset is issued on more than one network, the network you withdraw over is the
+largest fee variable you control — see
+[Assets and networks](/guides/trading/assets-and-networks).
+
+**How the network fee is applied to your transfer is a commercial term**: it may
+be deducted from the amount you send or charged alongside it. See
+[Crypto settlement](/guides/settlement/crypto#network-fees).
+
+<Warning>
+Establish which of those two applies **before** you instruct a payment that must
+arrive at an exact figure. If the fee is deducted from the transfer and your
+counterparty expects a precise amount — an invoice, a margin call, a loan
+repayment — they receive short, and the shortfall has to be topped up with a
+second on-chain transfer that pays a second network fee. Nothing about the
+instruction will look wrong at the time you send it.
+</Warning>
+
+<Note>
+Which assets and networks are enabled on your account depends on the Trillion
+Digital [entity](/guides/accounts/entities) you face and your commercial terms.
+Anything named in these guides is what the platform models, not a list of what is
+available to you — your account manager confirms what is actually enabled.
+</Note>
+
+## What only your account manager can tell you
+
+Ask for these together, once, rather than discovering them per trade:
+
+- The basis on which your price is made, and how it varies with size.
+- Whether a fee is charged inside the quoted price or alongside it.
+- The currency fees are charged in, and whether that differs by instrument.
+- How network fees on crypto withdrawals are applied — deducted or charged separately.
+- Minimum and maximum sizes, and any credit terms that bear on them.

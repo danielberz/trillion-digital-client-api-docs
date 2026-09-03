@@ -1,0 +1,208 @@
+---
+title: "Reporting and reconciliation"
+sidebarTitle: "Reporting"
+description: "Getting trade, balance, and transfer data out — and the five things that break a reconciliation."
+---
+
+Reconciling against Trillion Digital is a two-way comparison, not a consolidation
+exercise. There is one record of your account and every execution channel writes
+to it, so a break is a difference between your book and a single platform record
+— see
+[One ledger](/guides/trading/execution-channels#one-ledger-updated-in-real-time).
+A voice trade and an API order carry the same `TradeID` and sit in the same
+blotter.
+
+Most breaks turn out to be defects in how the data was extracted rather than
+disagreements about the trade, and it is the same handful of defects every time.
+
+## Where the data comes from
+
+| Source | Carries | Use it for |
+| --- | --- | --- |
+| **Portal blotter** | Trades, balances, and settlement status on screen | Settling "what actually happened" without writing code |
+| **[`Trade`](/trading-api/websocket/streams/trade) stream with `StartDate`** | Post-trade records, machine-readable, with fees and amounts stated | Automated reconciliation and backfill |
+| **[`Balance` and `BalanceTransaction`](/trading-api/websocket/streams/balance)** | Current balances, and the deposits, withdrawals and adjustments that moved them | Cash and position reconciliation |
+| **[`Exposure`](/trading-api/websocket/streams/credit)** | Credit utilisation against your limit | Reconciling headroom, if you trade on credit |
+| **Statements and confirmations** | The documents, issued per entity | Books and records, audit, and disputes |
+
+Reconcile against `Trade`, not against the order streams. `Order` and
+`ExecutionReport` describe how an order behaved; only the `Trade` record states
+`Fee` and `Amount` explicitly, so a P&L assembled from execution reports is
+inferring figures that the trade record already gives you.
+
+<Note>
+`Timestamp` and `TransactTime` are not the same field and should not feed the
+same column. `TransactTime` is when the trade was executed — the trade date for
+your books. `Timestamp` is when the message was published, which for a
+high-touch trade is when the trader booked it, and that is a human step. Use
+`Timestamp` for your ingest watermark and `TransactTime` for the trade date.
+</Note>
+
+## Pulling history
+
+The Trading API is WebSocket-first. Historical reads are subscriptions carrying a
+`StartDate`, not endpoint polls — REST serves historical OHLCV bars and nothing
+else, as set out in [Endpoints](/trading-api/rest/endpoints).
+
+Three rules make a repeatable ingest safe:
+
+- **Watermark on the last record you durably stored**, not on the clock time your
+  job ran. Records booked between your last read and your clock reading are
+  otherwise skipped and never looked for again.
+- **Overlap deliberately.** Re-subscribing from slightly before the watermark
+  costs nothing, because `TradeID` makes the ingest idempotent — provided you
+  upsert rather than append.
+- **Follow `next` to exhaustion** before you treat a backfill as complete. See
+  [Page a large stream](/trading-api/websocket/subscriptions#page-a-large-stream).
+
+## What breaks a reconciliation
+
+### A status that changed after you recorded it
+
+<Warning>
+`TradeStatus` can move to `Canceled` after a trade has already appeared as
+`Pending` or `Confirmed`. A system that records the first message it sees as
+final carries that trade on its books indefinitely — a position that will never
+settle, hedged against something that no longer exists, and it will not surface
+as a break because your book is internally consistent.
+
+Key on `TradeID` and apply the latest status. Treat the feed as a stream of
+upserts, not as an append-only journal. See
+[Trade status](/guides/trading/trade-lifecycle#trade-status).
+</Warning>
+
+Upserting earns its keep twice over: an append-only ingest also double-counts
+every record in the overlap window the moment you re-subscribe after a
+disconnect.
+
+### The first page that looks like the whole history
+
+<Warning>
+Wide historical subscriptions **page**. A client that ignores the `next` value on
+the payload receives the first page, no error, and no marker where the data
+stops. The job completes, the log is clean, and the extract is short.
+
+Nothing downstream can detect a record that was never delivered — a match rate
+computed over the extract comes out clean precisely because the missing trades
+are absent from both sides of the comparison.
+</Warning>
+
+<Tip>
+Assert that `next` is absent before you mark a backfill complete, rather than
+eyeballing whether the row count looks plausible. Then test it: request a range
+you know exceeds one page and check that the count matches the blotter for the
+same window.
+</Tip>
+
+### Side is stated from your perspective
+
+<Warning>
+`Side` is `Buy` or `Sell` **from your side of the trade**. A downstream system
+that records the dealer's side will look inverted on every row.
+
+Quantities, prices and fees all agree, so a reconciliation that matches on
+notional passes cleanly while every position in the book faces the wrong way.
+The error is uniform rather than sporadic, which means it produces no breaks to
+investigate — it usually surfaces as a P&L or exposure figure with the right
+magnitude and the wrong sign, well after the feed went live.
+
+Confirm which convention a downstream system expects before wiring anything into
+it. See
+[Reading a confirmation](/guides/trading/trade-lifecycle#reading-a-confirmation).
+</Warning>
+
+### Decimals parsed as floats
+
+Quantities, prices, fees and amounts arrive as **string-encoded decimals**.
+Parse them into a decimal type; never into an IEEE float, and never send them
+back as JSON numbers.
+
+<Warning>
+A float round-trip produces differences a few units in the last place — too
+small to be a real trade discrepancy, too large for a tolerance of zero. They
+cannot be explained by anything on the platform side, because they were created
+by your own decoder.
+
+The same defect on the order-entry path is louder: an increment violation is
+rejected outright. See
+[Precision and floats](/guides/trading/instruments#precision-and-floats).
+</Warning>
+
+### The other entity's trades
+
+Groups facing two Trillion Digital entities run two genuinely separate
+relationships. API keys are issued per entity account, there is no cross-entity
+view over the API, and statements and confirmations are issued per entity.
+
+<Warning>
+Comparing a group-level book against an extract pulled with one entity's key
+returns every trade of the other entity as an unmatched break. The volume of
+breaks makes it look like a platform failure, and it is a mapping error on your
+side — aggregation across entities is your responsibility, by design. See
+[Entities](/guides/accounts/entities).
+</Warning>
+
+## Reference data your mapping has to handle
+
+The asset and network sets the platform models are listed on
+[Assets and networks](/guides/trading/assets-and-networks); the fiat currencies,
+rails and internal settlement networks — which carry their own rail codes rather
+than presenting as a wire — are on [Fiat settlement](/guides/settlement/fiat).
+Parse against those supersets rather than against the subset your account has
+happened to trade so far.
+
+<Warning>
+**A ticker is not a key.** An asset can exist on several networks at once, and a
+whitelisted address is registered for a specific asset on a specific network —
+see [Crypto settlement](/guides/settlement/crypto). Key balances, transfers and
+addresses on **asset plus network**.
+
+Collapsing them onto the ticker merges holdings that are not interchangeable at
+settlement time, and the consequence is not a reporting error. It is a
+withdrawal instructed against an address your mapping resolved on the wrong
+network, which is generally unrecoverable.
+</Warning>
+
+<Warning>
+**Those lists are what the platform supports, not what you are offered.** A
+currency, network or asset the platform models is not necessarily enabled on
+your account, and the set differs between entities. Your onboarding
+documentation and your account manager are authoritative on what you can
+actually trade and settle.
+</Warning>
+
+## Reporting over REST
+
+<Warning>
+Request/response reporting over REST is what the
+[Platform API](/platform-api/overview) is being designed to provide, and **it is
+not available yet.** The contract is published for review — trade, balance and
+transaction history, statements and exports, with cursor
+[pagination](/platform-api/pagination) and idempotency keys — but nothing on
+those pages can be called today. Until it ships, historical reads run through
+WebSocket subscriptions with a `StartDate`.
+</Warning>
+
+The design is open for comment. If a field you need to match against your own
+book is absent from the specification, say so now —
+[support@trilliondigital.io](mailto:support@trilliondigital.io).
+
+## Triage: symptom to cause
+
+The portal blotter is the same record the API serves, not a separate view that
+could have drifted. Checking there first locates the fault on one side or the
+other.
+
+| Symptom | Likely cause | Check |
+| --- | --- | --- |
+| Trades on your book that never settle | Status moved to `Canceled` after you recorded it | Re-pull by `TradeID` and apply the latest `TradeStatus` |
+| History shorter than expected, no errors | The `next` cursor was ignored | Assert `next` is absent at the end of the run |
+| Every position facing the wrong way | `Side` convention mismatch | Compare one trade whose direction you know independently |
+| Breaks of a few units in the last place | Decimals parsed as floats | Inspect your decoder, not the platform record |
+| A whole account's trades missing | Extract pulled with the other entity's key | Confirm which entity account the key faces |
+| A recent voice trade absent | Not yet booked by the trader | Check the portal blotter, then raise it with your trader |
+
+Raise anything that survives that list with the `TradeID`, to your account
+manager or
+[support@trilliondigital.io](mailto:support@trilliondigital.io). Settlement
+discrepancies go in **before the value date**.
