@@ -16,8 +16,7 @@ data, balances, and transfers.
     balances, and transfers all run over one persistent connection.
   </Card>
   <Card title="REST" icon="server">
-    Reference data and historical queries — securities, currencies, orders,
-    trades, balances, and OHLCV bars.
+    Historical OHLCV market data. A deliberately small surface.
   </Card>
   <Card title="FIX 4.4" icon="network-wired">
     Standard FIX sessions for institutional order flow and market data.
@@ -42,8 +41,8 @@ first.
 | Request and accept quotes (RFQ) | WebSocket | [Quote](/trading-api/websocket/streams/quote) |
 | Submit, amend, cancel orders | WebSocket | [Commands](/trading-api/websocket/commands) |
 | Track order state and fills | WebSocket | [Order](/trading-api/websocket/streams/order) |
-| Retrieve post-trade detail | WebSocket, REST | [Trade](/trading-api/websocket/streams/trade) |
-| Monitor balances | WebSocket, REST | [Balance](/trading-api/websocket/streams/balance) |
+| Retrieve post-trade detail | WebSocket | [Trade](/trading-api/websocket/streams/trade) |
+| Monitor balances | WebSocket | [Balance](/trading-api/websocket/streams/balance) |
 | Monitor credit utilisation | WebSocket | [Credit and exposure](/trading-api/websocket/streams/credit) |
 | Request withdrawals and deposits | WebSocket | [Commands](/trading-api/websocket/commands) |
 | Query historical bars | REST | [REST endpoints](/trading-api/rest/endpoints) |

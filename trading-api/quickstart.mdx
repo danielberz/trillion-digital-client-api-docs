@@ -20,17 +20,18 @@ throughout, so nothing here touches real funds.
   </Step>
 
   <Step title="Prove your credentials over REST">
-    Before touching WebSockets, confirm the signature works with the simplest
-    possible call. `/v1/time` returns server time and requires no parameters, so
-    a failure here is unambiguously a signing problem.
+    Before touching WebSockets, confirm your signature works against the one
+    REST endpoint available to client accounts — historical OHLCV bars. A
+    failure here is unambiguously a signing problem rather than a protocol one.
 
     ```bash
+    PATH_="/v1/symbols/BTC-USD/ohlcv/1D"
     TS=$(python3 -c "from datetime import datetime,timezone;print(datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')+'Z')")
-    SIGN=$(printf 'GET\n%s\n%s\n/v1/time' "$TS" "$TD_HOST" \
+    SIGN=$(printf 'GET\n%s\n%s\n%s' "$TS" "$TD_HOST" "$PATH_" \
       | openssl dgst -sha256 -hmac "$TD_API_SECRET" -binary \
       | openssl base64 -A | tr '+/' '-_')
 
-    curl -sS "https://${TD_HOST}/v1/time" \
+    curl -sS "https://${TD_HOST}${PATH_}" \
       -H "ApiKey: ${TD_API_KEY}" \
       -H "ApiTimestamp: ${TS}" \
       -H "ApiSign: ${SIGN}"

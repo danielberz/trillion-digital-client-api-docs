@@ -96,7 +96,8 @@ convention a downstream system expects before wiring a feed into it.
     Everything is keyed on it.
   </Step>
   <Step title="Compare against the platform record">
-    The blotter, or `GET /v1/trades` filtered by `OrderID` or date range.
+    The blotter, or the [`Trade`](/trading-api/websocket/streams/trade) stream
+    subscribed with a `StartDate`.
   </Step>
   <Step title="Check the status">
     Confirm the trade has not been cancelled or amended since you recorded it.

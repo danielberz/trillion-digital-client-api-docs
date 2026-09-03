@@ -24,9 +24,9 @@ description: "An importable collection with request signing already wired up."
     Set `apiKey` and `apiSecret`. Leave `apiTimestamp` and `apiSign` empty — the
     pre-request script overwrites them on every send.
   </Step>
-  <Step title="Send “Server time”">
-    A `200` confirms your credentials and signing work. Everything else in the
-    collection follows the same pattern.
+  <Step title="Send “OHLCV bars”">
+    A `200` confirms your key, secret, timestamp format and signature
+    construction are all correct — which is the point of running it first.
   </Step>
 </Steps>
 
@@ -75,14 +75,18 @@ inherits it automatically. Just include the three auth headers referencing
 ## Scope and limitations
 
 <Warning>
-**This collection covers the REST surface only**, which is a minority of the
-Trading API.
+**This collection covers the REST surface, which is a single endpoint** —
+historical OHLCV bars. That is the entire client-facing REST API.
 
 Order entry, RFQ, execution reports, and live market data run over the
 [WebSocket API](/trading-api/websocket/overview). Postman can open a WebSocket
 request, but it does not run pre-request scripts for them — so the signed,
 timestamped handshake headers cannot be generated automatically the way they are
 for REST here.
+
+The collection is still worth importing: the **signing script is the reusable
+part**, and it is the piece integrators most often get wrong. Any request you add
+inherits it automatically.
 
 For WebSocket work, start from the [Quickstart](/trading-api/quickstart) or the
 [Python](/trading-api/sdks/python) and

@@ -90,11 +90,9 @@ utilisation.
 
 ## Credit limits over REST
 
-Point-in-time credit and configured limits are also available at
-`GET /v1/customer-credit` and `GET /v1/customer-credit/limits` — see
-[REST endpoints](/trading-api/rest/endpoints#credit). Use the stream for
-pre-trade checks and REST for reporting; polling REST in a trading loop is slower
-and gives you a staler answer than the stream you could have subscribed to.
+There is no REST equivalent — exposure is available over the stream only. That
+is the right shape for it: a credit check is a pre-trade decision, and a polled
+figure is stale by definition.
 
 <Note>
 Whether you trade on credit at all, and the size of the line, are commercial

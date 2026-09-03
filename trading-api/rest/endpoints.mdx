@@ -1,147 +1,74 @@
 ---
 title: "Endpoints"
-description: "The REST surface, grouped by resource."
+description: "The REST surface available to client accounts."
 ---
 
-All paths are relative to the environment base URL and require the three
-authentication headers.
+The client-facing REST surface is **historical market data**. Everything else —
+market data streaming, RFQ, order entry, execution reports, trades, balances, and
+transfers — is on the
+[WebSocket API](/trading-api/websocket/overview) or
+[FIX](/trading-api/fix/overview).
 
-## Platform
-
-<ParamField path="GET /v1/time" type="endpoint">
-  Server time. Takes no parameters — the best first call for verifying that your
-  signing implementation works.
-</ParamField>
-
-<ParamField path="GET /v1/status" type="endpoint">
-  Platform status.
-</ParamField>
-
-## Reference data
-
-<ParamField path="GET /v1/markets" type="endpoint">
-  Available markets. Returns `Market` rows with `Name`, `DisplayName`, `Type`
-  (`Exchange`, `Dealer`, `Custodian`, `InternalAlgo`, `External`, `Dark`), and a
-  `Capabilities` object indicating support for market data, orders, RFQ,
-  balances, and transfers.
-</ParamField>
-
-<ParamField path="GET /v1/currencies" type="endpoint">
-  Known currencies with their increments. Same shape as the
-  [`Currency`](/trading-api/websocket/streams/currency) stream.
-</ParamField>
-
-<ParamField path="GET /v1/counterparties" type="endpoint">
-  Counterparties visible to your account.
-</ParamField>
-
-<ParamField path="GET /v1/counterparties/{counterpartyId}" type="endpoint">
-  A single counterparty.
-</ParamField>
-
-## Market data
+## OHLCV bars
 
 <ParamField path="GET /v1/symbols/{symbol}/ohlcv/{resolution}" type="endpoint">
-  Historical OHLCV bars.
+  Historical open/high/low/close/volume bars for a security.
 
   ```
   https://sandbox.trading.trilliondigital.io/v1/symbols/BTC-USD/ohlcv/1D
   ```
 
-  `symbol` is a security symbol such as `BTC-USD`; `resolution` is a bar size
-  such as `1D`.
+  <ParamField path="symbol" type="string" required>
+    A security symbol, as published on the
+    [`Security`](/trading-api/websocket/streams/security) stream — for example
+    `BTC-USD`.
+  </ParamField>
+
+  <ParamField path="resolution" type="string" required>
+    Bar size, for example `1D`. Confirm the resolutions enabled for your account
+    with [support@trilliondigital.io](mailto:support@trilliondigital.io).
+  </ParamField>
 </ParamField>
 
-## Orders
+Requests are authenticated with the same three headers as the WebSocket
+handshake — see [Authentication](/trading-api/authentication). The signed string
+for REST appends query and body when they are non-empty:
 
-<ParamField path="GET /v1/orders" type="endpoint">
-  Order history. Accepts `StartDate`, `EndDate`, `Symbol`, `Statuses`, `OrderID`,
-  and `RFQID` filters. Filter on open statuses to retrieve working orders.
-</ParamField>
+```
+GET\n<ApiTimestamp>\n<host>\n<path>[\nquery][\nbody]
+```
 
-<ParamField path="POST /v1/orders" type="endpoint">
-  Submit an order. Body matches
-  [`NewOrderSingle`](/trading-api/websocket/commands#neworldersingle).
-</ParamField>
-
-<ParamField path="DELETE /v1/orders" type="endpoint">
-  Cancel an order. Body matches
-  [`OrderCancelRequest`](/trading-api/websocket/commands#ordercancelrequest).
-</ParamField>
+## Where to find everything else
 
 <Warning>
-Order entry is available over REST, but the **result is not in the response**.
-Fills and state changes are published on the `Order` and `ExecutionReport`
-streams. A REST-only client has no way to observe its own executions in real
-time. Use the WebSocket for trading.
+If you are looking for orders, trades, balances or transfers over REST, they are
+not there. The Trading API is **WebSocket-first**, and this is the single most
+common wrong assumption when starting an integration.
 </Warning>
 
-## RFQ
-
-<ParamField path="GET /v1/rfqs" type="endpoint">
-  RFQ history. Accepts `StartDate`, `EndDate`, `Symbol`, and `RFQID`.
-</ParamField>
-
-<ParamField path="GET /v1/quotes" type="endpoint">
-  Quote history, same filters as `/v1/rfqs`.
-</ParamField>
-
-<ParamField path="POST /v1/quotes/request" type="endpoint">
-  Open an RFQ. Body matches
-  [`QuoteRequest`](/trading-api/websocket/commands#quoterequest).
-</ParamField>
-
-<ParamField path="DELETE /v1/quotes/request" type="endpoint">
-  Cancel an RFQ. Requires both `QuoteReqID` and `RFQID`.
-</ParamField>
-
-## Post-trade
-
-<ParamField path="GET /v1/trades" type="endpoint">
-  Trade history. Accepts `StartDate`, `EndDate`, `Symbol`, `OrderID`, and
-  `RFQID`. Row shape matches the [`Trade`](/trading-api/websocket/streams/trade)
-  stream.
-</ParamField>
-
-<ParamField path="GET /v1/trade-allocations" type="endpoint">
-  Trade allocations, filterable by trade, order, RFQ, or sub-account.
-</ParamField>
-
-## Balances and transfers
-
-<ParamField path="GET /v1/customer-balances" type="endpoint">
-  Current balances. Accepts `MarketAccount`, `Currency`, and `EquivalentCurrency`.
-</ParamField>
-
-<ParamField path="GET /v1/customer-balances/transactions" type="endpoint">
-  Balance transactions — deposits, withdrawals, adjustments.
-</ParamField>
-
-<ParamField path="POST /v1/customer-balances/transactions" type="endpoint">
-  Create a withdrawal or deposit. The `Type` field selects which.
-</ParamField>
-
-<ParamField path="POST /v1/customer-balances/transactions/{transactionId}/cancel" type="endpoint">
-  Cancel a transaction. Only `PendingApproval` transactions can be cancelled.
-</ParamField>
-
-<ParamField path="GET /v1/customer-transactions" type="endpoint">
-  Customer transaction history.
-</ParamField>
-
-## Credit
-
-<ParamField path="GET /v1/customer-credit" type="endpoint">
-  Current credit utilisation and limits.
-</ParamField>
-
-<ParamField path="GET /v1/customer-credit/limits" type="endpoint">
-  Configured credit limits.
-</ParamField>
+| You want | Use |
+| --- | --- |
+| Tradeable securities and their increments | [`Security`](/trading-api/websocket/streams/security) stream |
+| Currencies and increments | [`Currency`](/trading-api/websocket/streams/currency) stream |
+| Live prices | [`MarketDataSnapshot`](/trading-api/websocket/streams/market-data-snapshot) stream |
+| Quotes and RFQ | [`Quote`](/trading-api/websocket/streams/quote) stream |
+| Order state and fills | [`Order` / `ExecutionReport`](/trading-api/websocket/streams/order) |
+| Trade history | [`Trade`](/trading-api/websocket/streams/trade) stream, with `StartDate` |
+| Balances | [`Balance`](/trading-api/websocket/streams/balance) stream |
+| Credit utilisation | [`Exposure`](/trading-api/websocket/streams/credit) stream |
+| Submitting orders and transfers | [WebSocket commands](/trading-api/websocket/commands) |
 
 <Note>
-Availability varies by entitlement. A `403` means your key is not permissioned for
-that resource rather than that the path is wrong — contact
-[support@trilliondigital.io](mailto:support@trilliondigital.io) to review your
-key's scope.
+Historical reads are done by subscribing with a `StartDate`, not by polling an
+endpoint. See
+[Subscriptions](/trading-api/websocket/subscriptions) — and note that wide date
+ranges page, so follow the `next` cursor or you will silently receive only the
+first page.
 </Note>
+
+<Tip>
+Reporting-style access over plain REST is what the
+[Platform API](/platform-api/overview) is being designed to provide. It is not
+available yet; until it is, historical reads run through the WebSocket streams
+above.
+</Tip>

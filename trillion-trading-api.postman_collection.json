@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Trillion Digital — Trading API (REST)",
-    "description": "REST endpoints for the Trillion Digital Trading API.\n\nSet `host`, `apiKey`, and `apiSecret` in the environment. The collection-level pre-request script generates a fresh ApiTimestamp and ApiSign before every request — signatures are timestamp-bound and cannot be reused.\n\nNOTE: This collection covers the REST surface only. Order entry, RFQ, and real-time data run over the WebSocket API, which a static collection cannot represent. See https://docs.trilliondigital.io/trading-api/websocket/overview",
+    "description": "The REST surface of the Trillion Digital Trading API.\n\nSet `host`, `apiKey`, and `apiSecret` in the environment. The collection-level pre-request script generates a fresh ApiTimestamp and ApiSign before every request — signatures are timestamp-bound and cannot be reused.\n\nSCOPE: the client-facing REST surface is historical OHLCV market data. Order entry, RFQ, execution reports, trades, balances and transfers all run over the WebSocket API, which a static Postman collection cannot represent. See https://docs.trilliondigital.io/trading-api/websocket/overview\n\nThe real value of this collection is the signing script — it is the part that is easy to get wrong, and it is reusable for any request you add.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -56,77 +56,6 @@
   ],
   "item": [
     {
-      "name": "Platform",
-      "item": [
-        {
-          "name": "Server time",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/v1/time", "host": ["{{baseUrl}}"], "path": ["v1", "time"] },
-            "description": "No parameters. The best first call to verify your signing implementation — a 200 here proves key, secret, timestamp format and signature construction are all correct."
-          }
-        },
-        {
-          "name": "Platform status",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/v1/status", "host": ["{{baseUrl}}"], "path": ["v1", "status"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Reference data",
-      "item": [
-        {
-          "name": "Markets",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/v1/markets", "host": ["{{baseUrl}}"], "path": ["v1", "markets"] }
-          }
-        },
-        {
-          "name": "Currencies",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/v1/currencies", "host": ["{{baseUrl}}"], "path": ["v1", "currencies"] }
-          }
-        },
-        {
-          "name": "Counterparties",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/v1/counterparties", "host": ["{{baseUrl}}"], "path": ["v1", "counterparties"] }
-          }
-        }
-      ]
-    },
-    {
       "name": "Market data",
       "item": [
         {
@@ -143,132 +72,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "symbols", "BTC-USD", "ohlcv", "1D"]
             },
-            "description": "Historical bars. Replace BTC-USD and 1D with the symbol and resolution you need."
-          }
-        }
-      ]
-    },
-    {
-      "name": "Trading",
-      "item": [
-        {
-          "name": "Orders",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/orders?StartDate=2026-01-01T00:00:00.000000Z",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "orders"],
-              "query": [{ "key": "StartDate", "value": "2026-01-01T00:00:00.000000Z" }]
-            }
-          }
-        },
-        {
-          "name": "Trades",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/trades?StartDate=2026-01-01T00:00:00.000000Z",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "trades"],
-              "query": [{ "key": "StartDate", "value": "2026-01-01T00:00:00.000000Z" }]
-            }
-          }
-        },
-        {
-          "name": "RFQs",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/v1/rfqs", "host": ["{{baseUrl}}"], "path": ["v1", "rfqs"] }
-          }
-        },
-        {
-          "name": "Quotes",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/v1/quotes", "host": ["{{baseUrl}}"], "path": ["v1", "quotes"] }
-          }
-        },
-        {
-          "name": "Trade allocations",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/v1/trade-allocations", "host": ["{{baseUrl}}"], "path": ["v1", "trade-allocations"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Balances & credit",
-      "item": [
-        {
-          "name": "Customer balances",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/customer-balances?EquivalentCurrency=USD",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "customer-balances"],
-              "query": [{ "key": "EquivalentCurrency", "value": "USD" }]
-            }
-          }
-        },
-        {
-          "name": "Balance transactions",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/customer-balances/transactions",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "customer-balances", "transactions"]
-            }
-          }
-        },
-        {
-          "name": "Customer credit",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "ApiKey", "value": "{{apiKey}}" },
-              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
-              { "key": "ApiSign", "value": "{{apiSign}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/v1/customer-credit", "host": ["{{baseUrl}}"], "path": ["v1", "customer-credit"] }
+            "description": "Historical open/high/low/close/volume bars.\n\nReplace BTC-USD with a symbol published on the Security stream, and 1D with a resolution enabled for your account.\n\nA 200 here proves your key, secret, timestamp format and signature construction are all correct — which is the point of running it first. A 401 means the signature is wrong; see https://docs.trilliondigital.io/trading-api/authentication"
           }
         }
       ]
