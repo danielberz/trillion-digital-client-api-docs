@@ -182,8 +182,9 @@ RFQ, never from a conversion rate.
 
 <Note>
 Rows also carry `Status` and `ConversionPath` — `Online` and `(ETH-USD)` in the
-published example — neither of which appears in the specification's response
-table. Their value sets are undefined here, so do not gate logic on them.
+published example — neither of which appears in this specification's response
+table. `Status` is a documented field on the underlying platform and behaves as
+it does elsewhere; `ConversionPath` is not, so do not gate logic on it.
 </Note>
 
 <Note>
