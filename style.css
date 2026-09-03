@@ -195,6 +195,12 @@ pre code .line {
   aspect-ratio: 4 / 1;
   max-height: 340px;
   object-fit: cover;
+  /* Decorative banner: it carries no information the H1 does not already give,
+   * so it takes an empty alt and is inert. `noZoom` in the MDX disables
+   * Mintlify's lightbox; this guarantees the banner stays non-interactive even
+   * if that default changes. */
+  pointer-events: none;
+  user-select: none;
 }
 
 .td-home-body {
@@ -202,10 +208,40 @@ pre code .line {
   padding-bottom: 6rem;
 }
 
-/* The custom-mode canvas has no h2 context, so the section rules above would
- * float against nothing. Re-establish spacing locally. */
-.td-home-body h2 {
-  margin-top: 3.5rem !important;
+/* `mode: "custom"` supplies NO prose styling, so markdown inside the home body
+ * renders unstyled — an h2 comes out at 16px, weight 400, in the muted body
+ * colour, indistinguishable from a paragraph. Everything below restores the
+ * typography a normal docs page gets for free. Components (Card, Steps, Note)
+ * carry their own styles and are unaffected. */
+.td-home-body h2:not(.not-prose) {
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: light-dark(#111827, #f3f4f6);
+  margin-top: 4rem !important;
+  margin-bottom: 1.25rem;
+  padding-top: 2rem !important;
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent) !important;
+}
+
+.td-home-body h3:not(.not-prose) {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: light-dark(#111827, #f3f4f6);
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.td-home-body p {
+  line-height: 1.7;
+  margin-block: 1rem;
+}
+
+.td-home-body a:not([class]) {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
 }
 
 @media (max-width: 640px) {
