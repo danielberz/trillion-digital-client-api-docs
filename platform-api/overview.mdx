@@ -131,8 +131,10 @@ creation time.
 | Account | `acct_01k9m2p7q3r4s5t6v7w8x9y0z1` |
 | Trade | `trd_01k9m2p7q3r4s5t6v7w8x9y0z1` |
 | Settlement instruction | `ssi_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+| Bank account | `bank_acct_01k9m2p7q3r4s5t6v7w8x9y0z1` |
 | Wallet address | `addr_01k9m2p7q3r4s5t6v7w8x9y0z1` |
-| Transaction | `txn_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+| Transfer | `txn_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+| Statement | `stmt_01k9m2p7q3r4s5t6v7w8x9y0z1` |
 
 <Tip>
 The prefix makes an ID self-describing in logs and error reports — you can tell
@@ -204,8 +206,29 @@ precisely because IEEE-754 cannot represent decimal money exactly. Use an intege
 or decimal type, and do arithmetic on `value`.
 </Warning>
 
+## The contract
+
+The full endpoint reference is generated from the OpenAPI specification and
+lives under **API reference** in the sidebar — 24 operations across accounts,
+balances, settlement instructions, bank accounts, wallet addresses, transfers,
+reporting, and compliance.
+
+<Card title="Download the OpenAPI specification" icon="download" href="/platform-api/openapi.yaml">
+  OpenAPI 3.1 · `openapi.yaml`
+</Card>
+
+<Note>
+Reading the spec directly is the fastest way to review it as a whole. Load it
+into an editor, generate a client, or point a mock server at it — the reference
+pages and the spec are the same artefact, so they cannot drift.
+</Note>
+
 ## Feedback
 
 This contract is open for review. Send comments to
 [support@trilliondigital.io](mailto:support@trilliondigital.io) — changes are
 substantially cheaper now than after implementation.
+
+Most valuable feedback, in order: resources or fields you need that are missing;
+anywhere the shape would force awkward code on your side; and any place the
+naming does not match what you would expect from the domain.

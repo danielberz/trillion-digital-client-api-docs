@@ -1,0 +1,1129 @@
+openapi: 3.1.0
+
+info:
+  title: Trillion Digital Platform API
+  version: "2026-09-01"
+  summary: Accounts, settlement, transfers, and reporting.
+  description: |
+    **This API is in design and is not yet available.** The contract is published
+    for review before implementation. Endpoints, field names, and semantics may
+    change, and nothing here can be called today.
+
+    The Platform API covers everything around a trade — account administration,
+    settlement destinations, money movement, and reporting. Trading itself lives
+    on the [Trading API](/trading-api/overview).
+
+    Feedback on this contract is welcome and is far cheaper to act on now than
+    after implementation.
+  contact:
+    name: Trillion Digital Support
+    email: support@trilliondigital.io
+
+servers:
+  - url: https://api.trilliondigital.io
+    description: |
+      One base URL. The API key prefix selects the environment — `tdk_test_`
+      addresses sandbox, `tdk_live_` addresses production.
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Accounts
+    description: Accounts, entities, and users.
+  - name: Balances
+    description: Point-in-time balances for reconciliation and reporting.
+  - name: Settlement instructions
+    description: How a currency settles — the rail and its identifiers.
+  - name: Bank accounts
+    description: Fiat destinations, registered and screened before use.
+  - name: Wallet addresses
+    description: Crypto destinations, bound to one asset on one network.
+  - name: Transfers
+    description: Deposits and withdrawals, and tracking them to completion.
+  - name: Reporting
+    description: Trade history and statements.
+  - name: Compliance
+    description: Onboarding and review state.
+
+paths:
+  /accounts:
+    get:
+      operationId: listAccounts
+      tags: [Accounts]
+      summary: List accounts
+      description: |
+        Accounts you can access. A group facing more than one Trillion Digital
+        entity has one account per entity; they do not net.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/StartingAfter"
+        - $ref: "#/components/parameters/EndingBefore"
+      responses:
+        "200":
+          description: A page of accounts.
+          headers:
+            Trillion-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Account" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /accounts/{id}:
+    get:
+      operationId: getAccount
+      tags: [Accounts]
+      summary: Retrieve an account
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Account" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [Accounts]
+      summary: List users
+      description: Named users with access to your accounts.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: A page of users.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/User" }
+
+  /balances:
+    get:
+      operationId: listBalances
+      tags: [Balances]
+      summary: List balances
+      description: |
+        Point-in-time balances suited to reconciliation and reporting.
+
+        For the live figure you size an order against, use the Trading API's
+        [`Balance`](/trading-api/websocket/streams/balance) stream instead — this
+        endpoint is not a pre-trade risk check.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - name: account_id
+          in: query
+          schema: { type: string }
+          description: Restrict to one account.
+        - name: currency
+          in: query
+          schema: { type: string }
+          description: Restrict to one currency, e.g. `USD`.
+      responses:
+        "200":
+          description: Balances.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Balance" }
+
+  /settlement_instructions:
+    get:
+      operationId: listSettlementInstructions
+      tags: [Settlement instructions]
+      summary: List settlement instructions
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/StartingAfter"
+        - name: currency
+          in: query
+          schema: { type: string }
+        - name: rail
+          in: query
+          schema: { $ref: "#/components/schemas/Rail" }
+      responses:
+        "200":
+          description: A page of settlement instructions.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          { $ref: "#/components/schemas/SettlementInstruction" }
+    post:
+      operationId: createSettlementInstruction
+      tags: [Settlement instructions]
+      summary: Create a settlement instruction
+      description: |
+        Registers how a currency settles. The instruction is validated and
+        screened before it becomes usable; it is not available for settlement on
+        creation.
+
+        Which fields are required depends on `rail` — see
+        [Fiat settlement](/guides/settlement/fiat).
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "#/components/schemas/SettlementInstructionCreate" }
+      responses:
+        "201":
+          description: Created, pending review.
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/SettlementInstruction" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /settlement_instructions/{id}:
+    get:
+      operationId: getSettlementInstruction
+      tags: [Settlement instructions]
+      summary: Retrieve a settlement instruction
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The settlement instruction.
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/SettlementInstruction" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /settlement_instructions/{id}/archive:
+    post:
+      operationId: archiveSettlementInstruction
+      tags: [Settlement instructions]
+      summary: Archive a settlement instruction
+      description: |
+        Archives rather than deletes. Archived instructions keep their history,
+        are excluded from list responses by default, and can no longer be used
+        for settlement.
+
+        There is no update operation. A change of details is a **new
+        registration**, because the replacement must be re-verified and
+        re-screened.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The archived instruction.
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/SettlementInstruction" }
+
+  /bank_accounts:
+    get:
+      operationId: listBankAccounts
+      tags: [Bank accounts]
+      summary: List bank accounts
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/StartingAfter"
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/BankAccountStatus" }
+        - name: currency
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: A page of bank accounts.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/BankAccount" }
+    post:
+      operationId: createBankAccount
+      tags: [Bank accounts]
+      summary: Register a bank account
+      description: |
+        Submits a fiat destination for verification and screening. It becomes
+        usable only once `status` reaches `APPROVED`.
+
+        A complete beneficiary address — street, town, and country — is required
+        for wire rails. An incomplete address is the most common cause of a
+        returned payment.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BankAccountCreate" }
+      responses:
+        "201":
+          description: Created, pending review.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankAccount" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /bank_accounts/{id}:
+    get:
+      operationId: getBankAccount
+      tags: [Bank accounts]
+      summary: Retrieve a bank account
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The bank account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankAccount" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /bank_accounts/{id}/archive:
+    post:
+      operationId: archiveBankAccount
+      tags: [Bank accounts]
+      summary: Archive a bank account
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The archived bank account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankAccount" }
+
+  /wallet_addresses:
+    get:
+      operationId: listWalletAddresses
+      tags: [Wallet addresses]
+      summary: List wallet addresses
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/StartingAfter"
+        - name: asset
+          in: query
+          schema: { type: string }
+        - name: network
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/WalletAddressStatus" }
+      responses:
+        "200":
+          description: A page of wallet addresses.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/WalletAddress" }
+    post:
+      operationId: createWalletAddress
+      tags: [Wallet addresses]
+      summary: Whitelist a wallet address
+      description: |
+        Submits a crypto destination for screening and, where required,
+        ownership verification.
+
+        An approved address is approved for **one asset on one network**. The
+        same address string on a different network is a separate registration —
+        this is what prevents an unrecoverable cross-network transfer.
+
+        `label` must be unique within your account. Reusing a label is the usual
+        cause of an apparent "only one wallet was accepted" outcome.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WalletAddressCreate" }
+      responses:
+        "201":
+          description: Created, pending screening.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WalletAddress" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "409":
+          description: |
+            A wallet with this label already exists, or this address is already
+            registered for the same asset and network.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /wallet_addresses/{id}:
+    get:
+      operationId: getWalletAddress
+      tags: [Wallet addresses]
+      summary: Retrieve a wallet address
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The wallet address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WalletAddress" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /wallet_addresses/{id}/archive:
+    post:
+      operationId: archiveWalletAddress
+      tags: [Wallet addresses]
+      summary: Archive a wallet address
+      description: |
+        Removes the address from use. Keeping the whitelist tight is a
+        meaningful control — every retired destination left in place is one more
+        that could be selected by mistake.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The archived address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WalletAddress" }
+
+  /transfers:
+    get:
+      operationId: listTransfers
+      tags: [Transfers]
+      summary: List transfers
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/StartingAfter"
+        - name: direction
+          in: query
+          schema: { $ref: "#/components/schemas/TransferDirection" }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/TransferStatus" }
+        - name: custom_ref
+          in: query
+          schema: { type: string }
+          description: |
+            Your own reference. The safe way to recover after an uncertain
+            create — look the transfer up rather than resubmitting it.
+      responses:
+        "200":
+          description: A page of transfers.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Transfer" }
+    post:
+      operationId: createTransfer
+      tags: [Transfers]
+      summary: Instruct a transfer
+      description: |
+        Instructs a withdrawal to a registered destination.
+
+        Supply exactly one of `bank_account_id` or `wallet_address_id`. The
+        destination must already be approved — there is no ad-hoc destination.
+
+        **Send an idempotency key.** If the response is lost you must retry with
+        the same key rather than resubmitting, or you risk paying twice.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransferCreate" }
+      responses:
+        "201":
+          description: Created, pending approval.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Transfer" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422":
+          description: |
+            The instruction is well-formed but cannot be executed — for example
+            the destination is not approved, or available balance is
+            insufficient.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /transfers/{id}:
+    get:
+      operationId: getTransfer
+      tags: [Transfers]
+      summary: Retrieve a transfer
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The transfer.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Transfer" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /transfers/{id}/cancel:
+    post:
+      operationId: cancelTransfer
+      tags: [Transfers]
+      summary: Cancel a transfer
+      description: |
+        Only a transfer in `PENDING_APPROVAL` can be cancelled. Once it reaches
+        `PENDING_TRANSFER` it is with the rail and cannot be recalled through the
+        platform — and once an on-chain transaction is broadcast, it cannot be
+        recalled by anyone.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The cancelled transfer.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Transfer" }
+        "409":
+          description: The transfer is no longer cancellable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /trades:
+    get:
+      operationId: listTrades
+      tags: [Reporting]
+      summary: List trades
+      description: |
+        Trade history across every execution channel. A voice trade and an API
+        order appear here identically — there is one ledger.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/StartingAfter"
+        - name: executed_from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: executed_to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: symbol
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: A page of trades.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Trade" }
+
+  /trades/{id}:
+    get:
+      operationId: getTrade
+      tags: [Reporting]
+      summary: Retrieve a trade
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: The trade.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Trade" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /statements:
+    get:
+      operationId: listStatements
+      tags: [Reporting]
+      summary: List statements
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/StartingAfter"
+        - name: period_start
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: A page of statements.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Statement" }
+
+  /compliance/status:
+    get:
+      operationId: getComplianceStatus
+      tags: [Compliance]
+      summary: Retrieve compliance status
+      description: |
+        Onboarding and review state, and any outstanding document requests.
+
+        Where the platform is prohibited from explaining a decision, the reason
+        is omitted rather than described. That is a constraint of applicable law,
+        not a gap in this API.
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - name: account_id
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Compliance status.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComplianceStatus" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        `Authorization: Bearer tdk_live_...`
+
+        The prefix selects the environment: `tdk_test_` for sandbox,
+        `tdk_live_` for production. Enforce the prefix in your own configuration
+        validation so a live key cannot reach a test deployment.
+
+  headers:
+    RequestId:
+      description: Unique identifier for this request. Quote it when contacting support.
+      schema: { type: string, examples: ["req_01k9m2p7q3r4s5t6v7w8x9y0z1"] }
+
+  parameters:
+    Version:
+      name: Trillion-Version
+      in: header
+      required: true
+      description: |
+        Dated API version, e.g. `2026-09-01`. Always send it explicitly — relying
+        on an account default makes the version a property of when the account
+        was opened rather than of your code.
+      schema: { type: string, examples: ["2026-09-01"] }
+
+    IdempotencyKey:
+      name: Trillion-Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Makes a retry safe. Responses replay for 72 hours; the same key with a
+        different body returns `409`.
+
+        Derive the key from something stable in your own system and persist it
+        **before** the request. A UUID generated at call time defeats the
+        mechanism, because a retry after a crash generates a new one.
+      schema: { type: string, maxLength: 255 }
+
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+
+    PageSize:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+
+    StartingAfter:
+      name: starting_after
+      in: query
+      description: Object ID to page forward from.
+      schema: { type: string }
+
+    EndingBefore:
+      name: ending_before
+      in: query
+      description: Object ID to page backward from.
+      schema: { type: string }
+
+  responses:
+    Unauthorized:
+      description: Missing, malformed, or revoked API key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Forbidden:
+      description: Valid key without permission for this resource.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotFound:
+      description: No such resource.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    InvalidRequest:
+      description: The request failed validation. All failures are reported together.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Conflict:
+      description: |
+        Idempotency key reused with a different body, or the resource is in a
+        state that forbids this operation.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  schemas:
+    Money:
+      type: object
+      description: |
+        Monetary values are objects, never bare numbers. `value` is in **minor
+        units** as a string — never parse it as a float.
+      required: [currency, exponent, value, display_value]
+      properties:
+        currency: { type: string, examples: ["USD"] }
+        exponent:
+          type: integer
+          description: Decimal places. USD is 2; many crypto assets are 8 or 18.
+          examples: [2]
+        value:
+          type: string
+          description: Amount in minor units. `"125050"` is $1,250.50.
+          examples: ["125050"]
+        display_value:
+          type: string
+          description: Human-readable form. Display only.
+          examples: ["1250.50"]
+
+    Resource:
+      type: object
+      description: Fields carried by every resource.
+      required: [id, object, created_at, updated_at]
+      properties:
+        id: { type: string }
+        object:
+          type: string
+          description: The resource type. Each resource declares its own value.
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        archived_at:
+          type: [string, "null"]
+          format: date-time
+          description: Set when archived. Archived objects are excluded from lists by default.
+        custom_ref:
+          type: [string, "null"]
+          maxLength: 255
+          description: Your reference ID.
+        custom_fields:
+          type: [object, "null"]
+          description: Your JSON metadata, max 4096 bytes encoded.
+
+    ListResponse:
+      type: object
+      required: [object, data, has_more]
+      properties:
+        object: { type: string, const: list }
+        data: { type: array, items: { type: object } }
+        has_more:
+          type: boolean
+          description: |
+            Terminate iteration on this, never on a short page. A page shorter
+            than `page_size` is not a reliable end-of-results signal.
+        next_cursor:
+          type: [string, "null"]
+          description: Pass as `starting_after` for the next page.
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [type, code, message]
+          properties:
+            type:
+              type: string
+              enum:
+                - authentication_error
+                - permission_error
+                - invalid_request_error
+                - not_found_error
+                - conflict_error
+                - rate_limit_error
+                - api_error
+            code:
+              type: string
+              description: Stable machine-readable code. **Branch on this, never on `message`.**
+              examples: ["PARAMETER_INVALID"]
+            message: { type: string, description: Human-readable. Wording may change. }
+            param: { type: string, description: The offending parameter, when attributable. }
+            doc_url: { type: string, format: uri }
+            request_id: { type: string }
+            errors:
+              type: array
+              description: Present when several parameters failed validation.
+              items:
+                type: object
+                properties:
+                  param: { type: string }
+                  code: { type: string }
+                  message: { type: string }
+
+    Rail:
+      type: string
+      description: Settlement rail. Availability depends on your entity.
+      enum:
+        [
+          FEDWIRE,
+          ACH,
+          FEDNOW,
+          RTP,
+          SWIFT,
+          SEPA,
+          CHAPS,
+          FASTER_PAYMENTS,
+          BACS,
+          SPEI,
+          BREB,
+          FAST_PAY,
+          ACH_CO,
+          EFT,
+          FAST,
+          NPP,
+          ZENGIN,
+          BOOK_TRANSFER,
+          INTERNAL_NETWORK,
+        ]
+
+    Account:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          properties:
+            object: { type: string, const: account }
+            name: { type: string }
+            entity:
+              type: string
+              description: The Trillion Digital entity this account faces.
+            status: { type: string, enum: [ACTIVE, SUSPENDED, CLOSED] }
+            base_currency: { type: string }
+
+    User:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          properties:
+            object: { type: string, const: user }
+            email: { type: string, format: email }
+            display_name: { type: string }
+            status: { type: string, enum: [INVITED, ACTIVE, DISABLED] }
+            mfa_enrolled: { type: boolean }
+
+    Balance:
+      type: object
+      properties:
+        object: { type: string, const: balance }
+        account_id: { type: string }
+        currency: { type: string }
+        total: { $ref: "#/components/schemas/Money" }
+        available:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: |
+            Excludes funds committed to working orders and pending withdrawals.
+            Size instructions against this, not against `total`.
+        as_of: { type: string, format: date-time }
+
+    SettlementInstruction:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          properties:
+            object: { type: string, const: settlement_instruction }
+            currency: { type: string }
+            rail: { $ref: "#/components/schemas/Rail" }
+            bank_account_id: { type: [string, "null"] }
+            status:
+              type: string
+              enum: [PENDING_REVIEW, APPROVED, REJECTED]
+            rejection_reason: { type: [string, "null"] }
+
+    SettlementInstructionCreate:
+      type: object
+      required: [currency, rail]
+      properties:
+        currency: { type: string }
+        rail: { $ref: "#/components/schemas/Rail" }
+        bank_account_id: { type: string }
+        custom_ref: { type: string }
+
+    Address:
+      type: object
+      description: |
+        A complete address. `city` and `country` are required on wire rails — a
+        missing town or country is enough to have a payment returned days later.
+      required: [line1, city, country]
+      properties:
+        line1: { type: string }
+        line2: { type: string }
+        city: { type: string }
+        state: { type: string }
+        postal_code: { type: string }
+        country: { type: string, description: ISO 3166 alpha-2. }
+
+    BankAccountStatus:
+      type: string
+      enum: [PENDING, PENDING_REVIEW, APPROVED, ACTIVE, REJECTED]
+
+    BankAccount:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          properties:
+            object: { type: string, const: bank_account }
+            status: { $ref: "#/components/schemas/BankAccountStatus" }
+            currency: { type: string }
+            rail: { $ref: "#/components/schemas/Rail" }
+            beneficiary_name: { type: string }
+            beneficiary_address: { $ref: "#/components/schemas/Address" }
+            bank_name: { type: string }
+            bank_address: { $ref: "#/components/schemas/Address" }
+            account_number_last4: { type: string }
+            routing_number: { type: [string, "null"] }
+            iban_last4: { type: [string, "null"] }
+            swift_bic: { type: [string, "null"] }
+            is_default: { type: boolean }
+            rejection_reason: { type: [string, "null"] }
+
+    BankAccountCreate:
+      type: object
+      required: [currency, rail, beneficiary_name, beneficiary_address, bank_name]
+      properties:
+        currency: { type: string }
+        rail: { $ref: "#/components/schemas/Rail" }
+        beneficiary_name:
+          type: string
+          description: The legal account name exactly as the receiving bank holds it.
+        beneficiary_address: { $ref: "#/components/schemas/Address" }
+        bank_name: { type: string }
+        bank_address: { $ref: "#/components/schemas/Address" }
+        account_number: { type: string }
+        routing_number: { type: string }
+        iban: { type: string }
+        swift_bic: { type: string }
+        intermediary_swift_bic: { type: string }
+        custom_ref: { type: string }
+
+    WalletAddressStatus:
+      type: string
+      enum: [PENDING_SCREENING, PENDING_VERIFICATION, APPROVED, REJECTED, SUSPENDED]
+
+    WalletAddress:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          properties:
+            object: { type: string, const: wallet_address }
+            label:
+              type: string
+              description: Unique within your account.
+            address: { type: string }
+            asset: { type: string, examples: ["USDC"] }
+            network: { type: string, examples: ["ethereum"] }
+            memo: { type: [string, "null"] }
+            destination_tag: { type: [string, "null"] }
+            status: { $ref: "#/components/schemas/WalletAddressStatus" }
+            rejection_reason: { type: [string, "null"] }
+
+    WalletAddressCreate:
+      type: object
+      required: [label, address, asset, network]
+      properties:
+        label: { type: string, description: Unique within your account. }
+        address: { type: string }
+        asset: { type: string }
+        network:
+          type: string
+          description: |
+            The approval binds to this network. The same address on a different
+            network is a separate registration.
+        memo: { type: string }
+        destination_tag: { type: string }
+        custom_ref: { type: string }
+
+    TransferDirection:
+      type: string
+      enum: [DEPOSIT, WITHDRAWAL]
+
+    TransferStatus:
+      type: string
+      enum: [PENDING_APPROVAL, PENDING_TRANSFER, COMPLETED, REJECTED, CANCELLED]
+
+    Transfer:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          properties:
+            object: { type: string, const: transfer }
+            direction: { $ref: "#/components/schemas/TransferDirection" }
+            status: { $ref: "#/components/schemas/TransferStatus" }
+            amount: { $ref: "#/components/schemas/Money" }
+            bank_account_id: { type: [string, "null"] }
+            wallet_address_id: { type: [string, "null"] }
+            rail: { type: [string, "null"] }
+            tx_hash:
+              type: [string, "null"]
+              description: |
+                On-chain transaction hash once broadcast. Evidence neither side
+                controls — quote it in any dispute.
+            completed_at: { type: [string, "null"], format: date-time }
+
+    TransferCreate:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: object
+          required: [currency, value]
+          properties:
+            currency: { type: string }
+            value: { type: string, description: Minor units, as a string. }
+        bank_account_id:
+          type: string
+          description: Supply exactly one of this or `wallet_address_id`.
+        wallet_address_id: { type: string }
+        custom_ref:
+          type: string
+          description: |
+            Strongly recommended. It is how you recover the transfer if the
+            response is lost.
+
+    Trade:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          properties:
+            object: { type: string, const: trade }
+            symbol: { type: string, examples: ["BTC-USD"] }
+            side:
+              type: string
+              enum: [BUY, SELL]
+              description: From **your** perspective.
+            quantity: { $ref: "#/components/schemas/Money" }
+            price: { type: string }
+            amount: { $ref: "#/components/schemas/Money" }
+            fee: { $ref: "#/components/schemas/Money" }
+            status: { type: string, enum: [PENDING, CONFIRMED, CANCELLED] }
+            executed_at: { type: string, format: date-time }
+            value_date: { type: string, format: date }
+            channel:
+              type: string
+              enum: [DESK, CHAT, PORTAL, API]
+              description: How the trade was reached. Economics do not vary by channel.
+
+    Statement:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          properties:
+            object: { type: string, const: statement }
+            period_start: { type: string, format: date }
+            period_end: { type: string, format: date }
+            download_url:
+              type: string
+              format: uri
+              description: Short-lived link to the PDF.
+
+    ComplianceStatus:
+      type: object
+      properties:
+        object: { type: string, const: compliance_status }
+        account_id: { type: string }
+        onboarding_status:
+          type: string
+          enum: [IN_PROGRESS, APPROVED, UNDER_REVIEW, RESTRICTED]
+        next_review_due: { type: [string, "null"], format: date }
+        outstanding_requests:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              description: { type: string }
+              requested_at: { type: string, format: date-time }
+              due_at: { type: [string, "null"], format: date-time }

@@ -175,6 +175,13 @@
                   "platform-api/pagination",
                   "platform-api/errors"
                 ]
+              },
+              {
+                "group": "API reference",
+                "openapi": {
+                  "source": "/platform-api/openapi.yaml",
+                  "directory": "platform-api/reference"
+                }
               }
             ]
           },
