@@ -317,3 +317,37 @@ pre code .line {
   height: auto;
 }
 
+
+/* ---------------------------------------------------------------------------
+ * Type weight
+ *
+ * Mintlify sets headings and <strong> at 600 in Inter. Against 400 body text on
+ * a dark ground that reads heavier than it needs to, particularly on reference
+ * pages where nearly every paragraph carries bolded field names.
+ *
+ * Inter is loaded as a variable font here, so 550 is a real weight rather than a
+ * synthesised one — it takes the edge off without collapsing the contrast that
+ * makes emphasis work.
+ * ------------------------------------------------------------------------- */
+main h1,
+main h2,
+main h3,
+main h4,
+.td-hero-title,
+.td-home-body h2:not(.not-prose),
+.td-home-body h3:not(.not-prose) {
+  font-weight: 550;
+}
+
+main strong,
+main b,
+.td-home-body strong {
+  font-weight: 550;
+}
+
+/* Table headers and field labels sit on the same scale — keep them consistent
+ * rather than leaving isolated pockets of 600. */
+main th,
+main [class*="font-semibold"] {
+  font-weight: 550;
+}
