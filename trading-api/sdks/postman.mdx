@@ -1,0 +1,118 @@
+---
+title: "Postman collection"
+description: "An importable collection with request signing already wired up."
+---
+
+<Card title="Download the collection" icon="download" href="/trillion-trading-api.postman_collection.json">
+  `trillion-trading-api.postman_collection.json`
+</Card>
+
+<Card title="Download the sandbox environment" icon="download" href="/trillion-sandbox.postman_environment.json">
+  `trillion-sandbox.postman_environment.json`
+</Card>
+
+## Setup
+
+<Steps>
+  <Step title="Import both files">
+    In Postman, **Import** → drop in the collection and the environment.
+  </Step>
+  <Step title="Select the environment">
+    Choose **Trillion Digital — Sandbox** from the environment selector.
+  </Step>
+  <Step title="Fill in your credentials">
+    Set `apiKey` and `apiSecret`. Leave `apiTimestamp` and `apiSign` empty — the
+    pre-request script overwrites them on every send.
+  </Step>
+  <Step title="Send “OHLCV bars”">
+    A `200` confirms your key, secret, timestamp format and signature
+    construction are all correct — which is the point of running it first.
+  </Step>
+</Steps>
+
+<Note>
+To point at production, duplicate the environment and change `host` to
+`trading.trilliondigital.io`. The host is part of the signed payload, so this one
+variable is all that needs to change — the script reads it.
+</Note>
+
+## How the signing works
+
+Signatures are timestamp-bound, so a saved request cannot carry a static
+signature — it would expire within seconds. The collection therefore runs a
+**collection-level pre-request script** that regenerates the timestamp and
+signature before every request:
+
+```javascript
+const ts = new Date().toISOString().replace('Z', '000Z');
+
+const method = pm.request.method.toUpperCase();
+const path   = '/' + pm.request.url.path.join('/');
+const query  = pm.request.url.getQueryString({ ignoreDisabled: true });
+const body   = (pm.request.body && pm.request.body.raw) ? pm.request.body.raw : '';
+
+const parts = [method, ts, pm.environment.get('host'), path];
+if (query) { parts.push(query); }
+if (body)  { parts.push(body); }
+
+const sign = CryptoJS.enc.Base64
+    .stringify(CryptoJS.HmacSHA256(parts.join('\n'), pm.environment.get('apiSecret')))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+
+pm.environment.set('apiTimestamp', ts);
+pm.environment.set('apiSign', sign);
+```
+
+`CryptoJS` is built into Postman's sandbox — nothing to install.
+
+<Tip>
+Because the script is defined at the collection level, any request you add
+inherits it automatically. Just include the three auth headers referencing
+`{{apiKey}}`, `{{apiTimestamp}}`, and `{{apiSign}}`.
+</Tip>
+
+## Scope and limitations
+
+<Warning>
+**This collection covers the REST surface, which is a single endpoint** —
+historical OHLCV bars. That is the entire client-facing REST API.
+
+Order entry, RFQ, execution reports, and live market data run over the
+[WebSocket API](/trading-api/websocket/overview). Postman can open a WebSocket
+request, but it does not run pre-request scripts for them — so the signed,
+timestamped handshake headers cannot be generated automatically the way they are
+for REST here.
+
+The collection is still worth importing: the **signing script is the reusable
+part**, and it is the piece integrators most often get wrong. Any request you add
+inherits it automatically.
+
+For WebSocket work, start from the [Quickstart](/trading-api/quickstart) or the
+[Python](/trading-api/sdks/python) and
+[TypeScript](/trading-api/sdks/typescript) examples instead.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized on every request">
+    Check `apiSecret` for a trailing space or newline — pasting from an email
+    frequently adds one. Also confirm you are using sandbox credentials against
+    the sandbox host; keys are not interchangeable between environments.
+  </Accordion>
+  <Accordion title="401 only on some requests">
+    Usually a query string mismatch. The signature covers the query, so disabled
+    or reordered parameters change the payload. The script uses
+    `ignoreDisabled: true` to match what is actually sent.
+  </Accordion>
+  <Accordion title="Worked once, then failed">
+    The environment was not selected, so the script could not write
+    `apiTimestamp` and `apiSign` and Postman reused stale values. Confirm the
+    environment is active in the selector.
+  </Accordion>
+  <Accordion title="403 Forbidden">
+    The path is right but your key is not entitled to that resource. Contact
+    [support@trilliondigital.io](mailto:support@trilliondigital.io).
+  </Accordion>
+</AccordionGroup>

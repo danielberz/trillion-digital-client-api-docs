@@ -1,0 +1,91 @@
+---
+title: "Entities"
+description: "Which Trillion Digital entity you face, and why it matters."
+---
+
+Trillion Digital operates through separate regulated entities in different
+jurisdictions. During onboarding you are assigned to one, and that assignment
+shapes several practical things.
+
+## What your entity determines
+
+| Area | Effect |
+| --- | --- |
+| Regulatory relationship | Which regime governs the relationship and what protections apply |
+| **Currencies** | Which fiat currencies you can settle in |
+| **Settlement rails** | Which rails and internal networks are available to you |
+| Banking | Which correspondent banking partners hold your funds |
+| Instruments | Which securities are enabled on your account |
+| Documentation | Which terms of business and disclosures apply |
+| Trade confirmations | Which entity appears as counterparty on confirmations and statements |
+
+<Warning>
+**Currencies and networks are entity-specific, and this surprises people.** Each
+entity banks with different institutions, so the set of currencies you can settle
+in and the internal networks available to you follow from that relationship — not
+from what the platform supports overall.
+
+A currency or network offered through one Trillion Digital entity may simply not
+exist on another. If you have seen a rail referenced in
+[Fiat settlement](/guides/settlement/fiat) and it is not available when you come
+to register a beneficiary, that is usually the reason rather than an error.
+</Warning>
+
+<Note>
+Your entity is determined during onboarding based on your jurisdiction,
+structure, and the instruments you intend to trade. It is recorded on your
+account and appears on every trade confirmation and statement.
+</Note>
+
+## Segregation
+
+Entities are operationally segregated. Accounts, balances, settlement
+instructions, and trade records belong to one entity and do not commingle.
+
+<Warning>
+If your group trades through more than one Trillion Digital entity, each is a
+**separate account with separate settlement instructions and separate API
+credentials.** Balances are not fungible between them, and a settlement
+instruction registered against one is not visible to the other. Confirm which
+account you are operating on before instructing a transfer.
+</Warning>
+
+## Working with more than one entity
+
+Groups that trade through two Trillion Digital entities should expect to run them
+as genuinely separate relationships.
+
+<AccordionGroup>
+  <Accordion title="Credentials">
+    API keys are issued per entity account. A key issued against one will not
+    read or trade the other, and there is no cross-entity view over the API —
+    aggregate on your side.
+  </Accordion>
+  <Accordion title="Settlement destinations">
+    Bank accounts and whitelisted wallets are registered per entity. Registering
+    a destination once does not make it available to the other account, even
+    though it is the same underlying account in the same name.
+  </Accordion>
+  <Accordion title="Balances and credit">
+    Balances do not net across entities, and a credit line extended to one is not
+    headroom for the other.
+  </Accordion>
+  <Accordion title="Reporting">
+    Statements and confirmations are issued per entity. Consolidated reporting is
+    your side of the boundary.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+The failure mode is quiet rather than loud: an instruction submitted against the
+wrong entity account usually fails validation for a destination that "obviously
+exists" — because it exists on the *other* account. Check which account you are
+operating on before assuming a registration problem.
+</Warning>
+
+## On confirmations and statements
+
+The facing entity is stated on every trade confirmation. If a confirmation shows
+an entity you did not expect, raise it with your account manager before settling
+— it usually indicates the trade was booked to the wrong account, which is far
+easier to correct before settlement than after.

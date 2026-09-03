@@ -1,62 +1,241 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Trillion Digital",
+  "description": "Documentation for the Trillion Digital OTC trading platform — knowledge center, Trading API, and Platform API.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#000000",
+    "light": "#FFFFFF",
+    "dark": "#000000"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
+  "logo": {
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png",
+    "href": "https://trilliondigital.io"
+  },
   "navigation": {
-    "pages": [
+    "versions": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
+        "version": "Latest",
+        "tabs": [
+          {
+            "tab": "Home",
+            "groups": [
+              {
+                "group": "Home",
+                "pages": [
+                  "index"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Knowledge Center",
+            "groups": [
+              {
+                "group": "Get started",
+                "pages": [
+                  "choosing-an-api",
+                  "guides/overview",
+                  "guides/getting-started"
+                ]
+              },
+              {
+                "group": "Accounts",
+                "pages": [
+                  "guides/accounts/onboarding",
+                  "guides/accounts/entities",
+                  "guides/accounts/banking-partners",
+                  "guides/accounts/users-and-roles"
+                ]
+              },
+              {
+                "group": "Trading",
+                "pages": [
+                  "guides/trading/execution-channels",
+                  "guides/trading/how-otc-trading-works",
+                  "guides/trading/rfq-workflow",
+                  "guides/trading/instruments",
+                  "guides/trading/assets-and-networks",
+                  "guides/trading/pricing-and-fees",
+                  "guides/trading/trade-lifecycle"
+                ]
+              },
+              {
+                "group": "Settlement",
+                "pages": [
+                  "guides/settlement/overview",
+                  "guides/settlement/fiat",
+                  "guides/settlement/crypto",
+                  "guides/settlement/settlement-instructions",
+                  "guides/settlement/bank-accounts",
+                  "guides/settlement/wallet-whitelisting"
+                ]
+              },
+              {
+                "group": "Operations",
+                "pages": [
+                  "guides/reporting",
+                  "guides/operating-hours"
+                ]
+              },
+              {
+                "group": "Compliance & security",
+                "pages": [
+                  "guides/compliance/kyc-kyb",
+                  "guides/compliance/security"
+                ]
+              },
+              {
+                "group": "Support",
+                "pages": [
+                  "guides/support/contact",
+                  "guides/support/faq",
+                  "guides/glossary"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Trading API",
+            "groups": [
+              {
+                "group": "Get started",
+                "pages": [
+                  "trading-api/overview",
+                  "trading-api/quickstart",
+                  "trading-api/environments"
+                ]
+              },
+              {
+                "group": "Using the API",
+                "pages": [
+                  "trading-api/authentication",
+                  "trading-api/connection-lifecycle",
+                  "trading-api/errors"
+                ]
+              },
+              {
+                "group": "WebSocket API",
+                "pages": [
+                  "trading-api/websocket/overview",
+                  "trading-api/websocket/subscriptions",
+                  "trading-api/websocket/commands",
+                  "trading-api/websocket/order-strategies",
+                  {
+                    "group": "Streams",
+                    "pages": [
+                      "trading-api/websocket/streams/market-data-snapshot",
+                      "trading-api/websocket/streams/security",
+                      "trading-api/websocket/streams/currency",
+                      "trading-api/websocket/streams/quote",
+                      "trading-api/websocket/streams/order",
+                      "trading-api/websocket/streams/trade",
+                      "trading-api/websocket/streams/balance",
+                      "trading-api/websocket/streams/credit"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "REST API",
+                "pages": [
+                  "trading-api/rest/overview",
+                  "trading-api/rest/endpoints"
+                ]
+              },
+              {
+                "group": "FIX API",
+                "pages": [
+                  "trading-api/fix/overview",
+                  "trading-api/fix/session",
+                  "trading-api/fix/market-data",
+                  "trading-api/fix/orders",
+                  "trading-api/fix/security-list",
+                  "trading-api/fix/strategies",
+                  "trading-api/fix/state-matrices",
+                  "trading-api/fix/examples"
+                ]
+              },
+              {
+                "group": "SDKs & samples",
+                "pages": [
+                  "trading-api/sdks/python",
+                  "trading-api/sdks/typescript",
+                  "trading-api/sdks/postman"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Platform API",
+            "groups": [
+              {
+                "group": "Introduction",
+                "pages": [
+                  "platform-api/overview"
+                ]
+              },
+              {
+                "group": "Conventions",
+                "pages": [
+                  "platform-api/authentication",
+                  "platform-api/versioning",
+                  "platform-api/idempotency",
+                  "platform-api/pagination",
+                  "platform-api/errors"
+                ]
+              },
+              {
+                "group": "API reference",
+                "openapi": {
+                  "source": "/platform-api/openapi.yaml",
+                  "directory": "platform-api/reference"
+                }
+              }
+            ]
+          },
+          {
+            "tab": "Changelog",
+            "groups": [
+              {
+                "group": "Changelog",
+                "pages": [
+                  "changelog"
+                ]
+              }
+            ]
+          }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    ]
   },
   "navbar": {
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:support@trilliondigital.io"
+      },
+      {
+        "label": "Status",
+        "href": "https://status.trilliondigital.io"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Client portal",
+      "href": "https://trading.trilliondigital.io"
     }
   },
   "contextual": {
+    "display": "header",
     "options": [
+      "assistant",
       "copy",
       "view",
       "chatgpt",
       "claude",
-      "perplexity",
       "mcp",
       "cursor",
       "vscode"
@@ -64,9 +243,8 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "website": "https://trilliondigital.io",
+      "linkedin": "https://www.linkedin.com/company/trillion-digital"
     }
   }
 }

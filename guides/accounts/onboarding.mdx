@@ -1,0 +1,98 @@
+---
+title: "Onboarding"
+description: "Entity verification, KYC/KYB, and account approval."
+---
+
+Onboarding establishes who you are, who ultimately owns and controls the entity,
+and which Trillion Digital entity you will face. It must complete before trading.
+
+```mermaid
+flowchart LR
+    A[Commercial<br/>discussion] --> B[Entity documents<br/>and ownership]
+    B --> C[Individual<br/>verification]
+    C --> D[Source of funds<br/>and wealth]
+    D --> E[Screening<br/>sanctions · PEP · adverse media]
+    E -->|clears| F[Approved]
+    E -->|query| G[Further<br/>information requested]
+    G --> E
+    F --> H[Account provisioned<br/>users invited]
+    H --> I[Periodic review<br/>risk-based cycle]
+    I --> E
+```
+
+<Note>
+Screening is a loop, not a gate you pass once. The same checks run on a
+risk-based cycle for the life of the relationship.
+</Note>
+
+## What is collected
+
+<AccordionGroup>
+  <Accordion title="Entity documentation">
+    Certificate of incorporation, articles or bylaws, proof of registered
+    address, and evidence of good standing. Requirements vary by jurisdiction and
+    entity type.
+  </Accordion>
+  <Accordion title="Ownership and control">
+    Ownership structure to the level of ultimate beneficial owners, plus
+    identification of directors and authorised signatories. Layered structures
+    take longer because each layer is verified.
+  </Accordion>
+  <Accordion title="Individual verification">
+    Government-issued identification and proof of address for beneficial owners
+    and authorised users, verified through our identity provider.
+  </Accordion>
+  <Accordion title="Source of funds and wealth">
+    Evidence supporting the origin of the funds being traded, proportionate to
+    expected activity.
+  </Accordion>
+  <Accordion title="Business rationale">
+    Expected volumes, instruments, counterparties, and the commercial purpose of
+    the trading activity. This informs ongoing transaction monitoring.
+  </Accordion>
+</AccordionGroup>
+
+## Screening
+
+All entities, beneficial owners, and authorised users are screened against
+sanctions, politically-exposed-person, and adverse-media sources at onboarding
+and on an ongoing basis thereafter. Wallet addresses are separately screened —
+see [Wallet whitelisting](/guides/settlement/wallet-whitelisting).
+
+<Note>
+Screening is continuous, not one-off. A change in sanctions status or ownership
+after approval can suspend an account. Tell us promptly about changes in
+ownership, control, or registered details.
+</Note>
+
+## What happens after approval
+
+<Steps>
+  <Step title="Account provisioning">
+    Your trading account is created against the appropriate Trillion Digital
+    entity.
+  </Step>
+  <Step title="User invitations">
+    Authorised users receive email invitations to set credentials and enrol
+    multi-factor authentication.
+  </Step>
+  <Step title="Settlement registration">
+    Bank accounts and wallet addresses are registered and screened.
+  </Step>
+  <Step title="Credentials">
+    If you are integrating, API keys are issued per environment on request.
+  </Step>
+</Steps>
+
+## Keeping onboarding current
+
+Periodic review refreshes documentation on a risk-based cycle. Notify
+[compliance@trilliondigital.io](mailto:compliance@trilliondigital.io) of changes
+to ownership or control, registered address or entity name, authorised users, or
+the nature of your trading activity.
+
+<Warning>
+Stale documentation is the most common cause of an otherwise healthy account
+being restricted. Reviews are far quicker when documents are supplied before they
+are chased.
+</Warning>

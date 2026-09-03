@@ -1,0 +1,114 @@
+---
+title: "Order strategies"
+sidebarTitle: "Strategies"
+description: "StopLimit and TakeProfitLimit trigger strategies for NewOrderSingle (35=D)."
+---
+
+<Warning>
+**Order strategy and algo parameters are not yet accepted over FIX.** The FIX
+2.50 specification states, both for order submission generally and for
+NewOrderSingle specifically, that *specifying order strategy and algo parameters
+will be supported in a future release*, and that **orders are routed using the
+default routing strategy**.
+
+The fields and parameters below therefore describe the intended contract, not
+behaviour you can rely on today. An integration that assumes a
+`TargetStrategy` (847) sent over FIX will produce a resting stop or take-profit
+order is designing around a capability that is not live — the order will be
+routed with the default strategy instead. Confirm availability with
+[support@trilliondigital.io](mailto:support@trilliondigital.io) before building
+against it. In the meantime the
+[WebSocket API](/trading-api/websocket/order-strategies) carries `StopLimit` as a
+live strategy; note that it documents no `TakeProfitLimit`, so there is currently
+no documented route for a take profit on either transport.
+</Warning>
+
+Order routing strategies are specified on
+[NewOrderSingle (35=D)](/trading-api/fix/orders) messages
+using the `TargetStrategy` (847) tag, with the strategy's parameters carried in a
+repeating group.
+
+## Carrying a strategy over FIX
+
+| Tag | Field | Req | Description |
+| --- | --- | --- | --- |
+| `847` | TargetStrategy | N | Allows specifying an order strategy type. See the strategies below. |
+| `957` | NoStrategyParams | N | The number of strategy parameter repeating groups |
+| `958` | StrategyParameterName | N | The name of the StrategyParameter being set |
+| `960` | StrategyParameterValue | N | The value for the StrategyParameter being set |
+
+The **Parameter Name** column in each strategy table below is the value carried
+in `StrategyParameterName` (958); the parameter's value is carried in
+`StrategyParameterValue` (960).
+
+<Warning>
+Use **`NoStrategyParams` (957)** for the repeating group count. Tags 957, 958 and
+960 are contiguous, and 957 is the strategy-parameter group count in the
+[FIX 4.4](https://www.fixtrading.org/standards/fix-4-4/) dictionary. You may
+encounter `950` referenced elsewhere; confirm with your integration contact
+before wiring a FIX engine's data dictionary to it.
+
+This is worth getting right first time: a group count sent on the wrong tag is
+not parsed as a repeating group at all, so the parameters that follow are
+**silently dropped rather than rejected** — the order is accepted without your
+strategy applied.
+</Warning>
+
+## StopLimit
+
+Places the order only once the specified stop price has been met.
+
+- For a **Buy** StopLimit order, the stop price must be **above** the current
+  market price.
+- For a **Sell** StopLimit order, the stop price must be **below** the current
+  market price.
+
+To place a StopLimit order, send `TargetStrategy(847)=StopLimit`.
+
+| Parameter Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `TriggerPrice` | Price | Y | The price that must be met to trigger execution of the order with the configured limit price. |
+| `TriggerSource` | String | N | Optional aggregation which will be used to construct the order's trigger reference rate. |
+| `EndTime` | String | N | Optional expiration time for the order. An ISO-8601 UTC string of the form `2019-02-13T05:17:32.000000Z` |
+
+## TakeProfitLimit
+
+Places the order only once the specified take profit price has been met.
+
+- For a **Buy** TakeProfitLimit order, the take profit price must be **below**
+  the current market price.
+- For a **Sell** TakeProfitLimit order, the take profit price must be **above**
+  the current market price.
+
+To place a TakeProfitLimit order, send
+`TargetStrategy(847)=TakeProfitLimit`.
+
+| Parameter Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `TriggerPrice` | Price | Y | The price that must be met to trigger execution of the order with the configured limit price. |
+| `TriggerSource` | String | N | Optional aggregation which will be used to construct the order's trigger reference rate. |
+| `EndTime` | String | N | Optional expiration time for the order. An ISO-8601 UTC string of the form `2019-02-13T05:17:32.000000Z` |
+
+<Warning>
+The two strategies take an **identical** parameter set — same names, same types,
+same required flags. Nothing inside the repeating group distinguishes a stop from
+a take profit; the only discriminator is the value of `TargetStrategy` (847). A
+mis-set 847 with a correctly populated group is a well-formed message that
+expresses the opposite intent: the same `TriggerPrice` that arms a Buy StopLimit
+above the market is, under TakeProfitLimit, a price the specification requires to
+be below it. Validate the strategy name and the trigger side together at the
+point you build the order, not per field.
+</Warning>
+
+<Note>
+`EndTime` is a strategy parameter of type **String** in ISO-8601 form
+(`2019-02-13T05:17:32.000000Z`), carried in `StrategyParameterValue` (960). It is
+not the same field as `ExpireTime` (126) or `EffectiveTime` (168) on
+NewOrderSingle, which are FIX `UTCTimestamp` values. Formatting `EndTime` as a
+FIX timestamp, or setting `ExpireTime` (126) and expecting it to expire the
+trigger, are distinct mistakes.
+</Note>
+
+<Update label="V 2.50">
+  Added description for Order Strategies.
+</Update>

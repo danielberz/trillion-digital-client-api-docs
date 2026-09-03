@@ -1,0 +1,353 @@
+/*
+ * Trillion Digital documentation — custom styles.
+ *
+ * Scope is deliberately narrow. Everything here fixes a concrete legibility or
+ * layout problem in a dense API reference; none of it restyles Mintlify for its
+ * own sake. Every rule works in both light and dark themes.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Header logo
+ *
+ * Mintlify renders the navbar logo at h-7 (28px). The Trillion wordmark is wide
+ * and light-weight, so it reads smaller than the default at that height. Scaled
+ * 20% to 33.6px. !important beats the Tailwind utility on the element itself.
+ * ------------------------------------------------------------------------- */
+.nav-logo {
+  height: 33.6px !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * Reference tables
+ *
+ * Mintlify sets [&_td]:min-w-[150px] on every table. Sensible for prose tables,
+ * wrong for FIX tag tables and the ten-column order state-change matrices.
+ * Letting cells size to content takes those from a ~1500px minimum to ~1165px.
+ * Mintlify already supplies a horizontal scroll container; this just means less
+ * of it is needed.
+ * ------------------------------------------------------------------------- */
+table td,
+table th {
+  min-width: 0 !important;
+}
+
+/* First column is an identifier — tag number, field name, status code. Keep it
+ * on one line so it stays scannable. */
+table td:first-child,
+table th:first-child {
+  white-space: nowrap;
+}
+
+/* The description column carries the weight; let it take the slack. */
+table td:last-child {
+  min-width: 18rem !important;
+}
+
+table td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inline code in tables is identifier work, not prose — tighten it so a table
+ * of forty enum values does not read as a wall of pills. */
+table code {
+  font-size: 0.8125rem;
+  padding-inline: 0.3em;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * Section rhythm
+ *
+ * Reference pages run to dozens of headings. Without separation an h2 reads as
+ * just-another-bold-line. Give major sections air plus a hairline rule; leave
+ * h3 alone so field groups stay visually subordinate.
+ * ------------------------------------------------------------------------- */
+main h2 {
+  margin-top: 3rem !important;
+  padding-top: 1.25rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+main h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 2rem !important;
+}
+
+main h3 {
+  margin-top: 2rem !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * Cards
+ * ------------------------------------------------------------------------- */
+#content-area a[href] > div,
+.card {
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------------------------
+ * Code blocks
+ *
+ * Signing examples and FIX wire messages are compared character by character.
+ * A little more leading materially helps.
+ * ------------------------------------------------------------------------- */
+pre code {
+  line-height: 1.6;
+}
+
+/* FIX examples are long single lines of tag=value^A — wrap rather than forcing
+ * a horizontal scroll across the page. */
+pre code .line {
+  word-break: break-word;
+}
+
+/* ---------------------------------------------------------------------------
+ * Home page
+ *
+ * index.mdx uses `mode: "custom"`, which hands us a blank canvas — no sidebar,
+ * no table of contents, no container padding — so the page establishes its own
+ * layout here.
+ *
+ * Unlike the docs shell below, the landing page stays a centred, constrained
+ * column. A hero that runs the full width of a wide display makes the artwork
+ * dominate and the copy hard to scan.
+ * ------------------------------------------------------------------------- */
+.td-hero,
+.td-home-body {
+  max-width: 68rem;
+  margin-inline: auto;
+  padding-inline: 2rem;
+}
+
+.td-hero {
+  padding-top: 4rem;
+}
+
+.td-hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.td-hero-title {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  margin: 0;
+}
+
+.td-hero-sub {
+  margin: 0.875rem 0 0;
+  max-width: 34rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  opacity: 0.7;
+}
+
+/* Inverted button — the brand is monochrome, so the CTA reads as the negative
+ * of the page rather than as a colour. */
+.td-hero-cta {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  background: light-dark(#000, #fff);
+  color: light-dark(#fff, #000);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.td-hero-cta:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+/* Brand artwork. Source is 1584x396 (4:1). */
+.td-hero-art {
+  margin-top: 3rem;
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  line-height: 0;
+}
+
+/* Hold the source ratio so nothing is cropped at typical widths, then cap the
+ * height — object-fit: cover trims top and bottom rather than letterboxing.
+ * The art is dark on both themes, so it needs no light/dark variant. */
+.td-hero-art img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 1;
+  max-height: 340px;
+  object-fit: cover;
+  /* Decorative banner: it carries no information the H1 does not already give,
+   * so it takes an empty alt and is inert. `noZoom` in the MDX disables
+   * Mintlify's lightbox; this guarantees the banner stays non-interactive even
+   * if that default changes. */
+  pointer-events: none;
+  user-select: none;
+}
+
+.td-home-body {
+  padding-top: 4rem;
+  padding-bottom: 6rem;
+}
+
+/* `mode: "custom"` supplies NO prose styling, so markdown inside the home body
+ * renders unstyled — an h2 comes out at 16px, weight 400, in the muted body
+ * colour, indistinguishable from a paragraph. Everything below restores the
+ * typography a normal docs page gets for free. Components (Card, Steps, Note)
+ * carry their own styles and are unaffected. */
+.td-home-body h2:not(.not-prose) {
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: light-dark(#111827, #f3f4f6);
+  margin-top: 4rem !important;
+  margin-bottom: 1.25rem;
+  padding-top: 2rem !important;
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent) !important;
+}
+
+.td-home-body h3:not(.not-prose) {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: light-dark(#111827, #f3f4f6);
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.td-home-body p {
+  line-height: 1.7;
+  margin-block: 1rem;
+}
+
+.td-home-body a:not([class]) {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+@media (max-width: 640px) {
+  .td-hero {
+    padding-top: 2.5rem;
+  }
+  .td-hero-cta {
+    order: 3;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Docs shell width
+ *
+ * Mintlify caps the shell (sidebar + content + TOC) at max-width 1472px and
+ * centres it, which on a wide display leaves ~230px of dead space each side and
+ * pushes the sidebar well off the left edge.
+ *
+ * Release the cap so the shell runs near full-bleed with the sidebar at the
+ * edge. The prose column inside `main` keeps its own narrower constraint, so
+ * line length is unaffected — the extra room goes to the sidebar position and
+ * to wide reference tables. The landing page above is deliberately excluded.
+ *
+ * Targeted with :has() rather than Mintlify's generated Tailwind class names,
+ * which are not stable across releases.
+ * ------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  div:has(> main) {
+    max-width: none !important;
+    margin-inline: 0 !important;
+    padding-inline: 1.5rem !important;
+  }
+
+  /* The navbar sits in its own `max-w-8xl mx-auto` wrapper, so releasing only
+   * the shell leaves the logo centred while the sidebar hugs the edge. */
+  .max-w-8xl:has(.nav-logo) {
+    max-width: none !important;
+    margin-inline: 0 !important;
+  }
+
+  /* The inner bar carries lg:px-12 (48px); match the shell's 1.5rem so the logo
+   * lines up with the sidebar rather than sitting 24px further in. */
+  .max-w-8xl:has(.nav-logo) [class*="px-12"] {
+    padding-inline: 1.5rem !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Diagrams
+ *
+ * Mermaid sizes each SVG to its own natural width and leaves it block-level, so
+ * a narrow state diagram (~510px) sits hard against the left edge of a 1194px
+ * content column and reads as stranded rather than placed. Centre it, give
+ * diagrams room to breathe, and let genuinely wide ones scroll inside their own
+ * container instead of pushing the page sideways.
+ * ------------------------------------------------------------------------- */
+/* The hairline panel makes a diagram read as a figure rather than as line art
+ * floating between two paragraphs. Deliberately subtle — the diagram is the
+ * content, the frame is only there to bound it. */
+.mermaid {
+  margin-block: 2.25rem;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  border-radius: 0.75rem;
+  padding: 1.75rem 1rem;
+  background: color-mix(in srgb, currentColor 2.5%, transparent);
+}
+
+.mermaid svg {
+  display: block;
+  margin-inline: auto;
+  max-width: 100%;
+  height: auto;
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Type weight
+ *
+ * Mintlify sets headings and <strong> at 600 in Inter. Against 400 body text on
+ * a dark ground that reads heavier than it needs to, particularly on reference
+ * pages where nearly every paragraph carries bolded field names.
+ *
+ * Inter is loaded as a variable font here, so 550 is a real weight rather than a
+ * synthesised one — it takes the edge off without collapsing the contrast that
+ * makes emphasis work.
+ * ------------------------------------------------------------------------- */
+main h1,
+main h2,
+main h3,
+main h4,
+.td-hero-title,
+.td-home-body h2:not(.not-prose),
+.td-home-body h3:not(.not-prose) {
+  font-weight: 550;
+}
+
+main strong,
+main b,
+.td-home-body strong {
+  font-weight: 550;
+}
+
+/* Table headers and field labels sit on the same scale — keep them consistent
+ * rather than leaving isolated pockets of 600. */
+main th,
+main [class*="font-semibold"] {
+  font-weight: 550;
+}

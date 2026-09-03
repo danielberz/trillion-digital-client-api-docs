@@ -1,0 +1,157 @@
+---
+title: "Security"
+description: "Securities available to trade, with their increments and size limits."
+---
+
+Streams Trillion Digital's security master: the securities supported over the API
+and available to trade. Subscribe to this first — it tells you what symbols exist
+and, critically, the increments your orders must respect.
+
+The first message carries a snapshot of every available security and is flagged
+`initial: true`. Every message after that is a **delta** against that snapshot,
+not a fresh copy of the security master.
+
+## Subscribe
+
+```json Client → server
+{
+  "reqid": 2,
+  "type": "subscribe",
+  "streams": [{ "name": "Security" }]
+}
+```
+
+### Parameters
+
+<ParamField body="Symbols" type="string[]">
+  Optional list of symbols to filter the subscription on. Omit for all securities.
+</ParamField>
+
+## Response
+
+```json Server → client
+{
+  "reqid": 2,
+  "type": "Security",
+  "ts": "2021-09-14T22:11:47.512168Z",
+  "initial": true,
+  "seq": 1,
+  "data": [
+    {
+      "Timestamp": "2021-09-14T22:11:47.512168Z",
+      "UpdateAction": "Update",
+      "SecurityID": 2,
+      "Symbol": "ETH-USD",
+      "MinPriceIncrement": "0.01",
+      "MinSizeIncrement": "0.00000001",
+      "MinAmtIncrement": "0.01",
+      "MinimumSize": "0.00000001",
+      "MaximumSize": "10000000",
+      "QuoteCurrency": "USD",
+      "BaseCurrency": "ETH",
+      "DefaultPriceIncrement": "0.01",
+      "DefaultSizeIncrement": "0.0001",
+      "PriceDisplaySpec": "M.m",
+      "SizeDisplaySpec": "M.m",
+      "NormalSize": "2",
+      "ProductType": "Spot",
+      "PositionCurrency": "ETH",
+      "SettlementCurrency": "USD",
+      "NotionalMultiplier": "1",
+      "SizeBuckets": [{ "Size": "0" }],
+      "DisplaySymbol": "ETH-USD",
+      "Description": "Ethereum/U.S. Dollar",
+      "Rank": 2
+    }
+  ]
+}
+```
+
+<ResponseField name="Timestamp" type="datetime" required>Timestamp of message publication.</ResponseField>
+<ResponseField name="UpdateAction" type="string" required>
+  `Update`, or `Remove` when the security is no longer available.
+</ResponseField>
+<ResponseField name="SecurityID" type="string" required>System ID, informational only.</ResponseField>
+<ResponseField name="Symbol" type="string" required>Symbol for the security.</ResponseField>
+<ResponseField name="DisplaySymbol" type="string" required>Display symbol.</ResponseField>
+<ResponseField name="Description" type="string" required>Description of the security.</ResponseField>
+
+<ResponseField name="MinPriceIncrement" type="decimal" required>
+  Minimum price increment.
+</ResponseField>
+<ResponseField name="MinSizeIncrement" type="decimal" required>
+  Minimum size increment. Validates orders and RFQs expressed in the security's
+  **base** currency.
+</ResponseField>
+<ResponseField name="MinAmtIncrement" type="decimal">
+  Minimum amount increment. Validates orders and RFQs expressed in the **quote**
+  currency.
+</ResponseField>
+<ResponseField name="DefaultPriceIncrement" type="decimal" required>
+  Default price increment used in market data and orders.
+</ResponseField>
+<ResponseField name="DefaultSizeIncrement" type="decimal" required>
+  Default size increment used in market data and orders.
+</ResponseField>
+
+<ResponseField name="MinimumSize" type="decimal" required>Minimum order size.</ResponseField>
+<ResponseField name="MaximumSize" type="decimal">Maximum order size.</ResponseField>
+<ResponseField name="NormalSize" type="decimal">Normal size of the security.</ResponseField>
+
+<ResponseField name="BaseCurrency" type="string" required>Base currency.</ResponseField>
+<ResponseField name="QuoteCurrency" type="string" required>Currency the security is quoted in.</ResponseField>
+<ResponseField name="PositionCurrency" type="string" required>Currency positions are tracked in.</ResponseField>
+<ResponseField name="SettlementCurrency" type="string">Currency settlement is negotiated in.</ResponseField>
+
+<ResponseField name="PriceDisplaySpec" type="string" required>
+  Specification describing how to display prices.
+</ResponseField>
+<ResponseField name="SizeBuckets" type="decimal[]" required>
+  Default size buckets for `MarketDataSnapshot` streams.
+</ResponseField>
+<ResponseField name="ProductType" type="string">Product type.</ResponseField>
+<ResponseField name="NotionalMultiplier" type="decimal">Notional multiplier.</ResponseField>
+<ResponseField name="Expiration" type="decimal">Expiration of the security.</ResponseField>
+<ResponseField name="EndTime" type="datetime">Date this security was disabled.</ResponseField>
+<ResponseField name="Rank" type="integer">Security rank.</ResponseField>
+
+<Warning>
+Increments are the most common cause of rejected orders. A quantity or price that
+is not a whole multiple of the relevant increment will be rejected. Note that
+**which** increment applies depends on the currency you express the order in:
+`MinSizeIncrement` for base-currency orders, `MinAmtIncrement` for quote-currency
+orders. Round before submitting rather than reacting to a rejection.
+</Warning>
+
+## Maintaining a local security master
+
+Merge each row into a local map keyed by `Symbol`: apply rows with
+`UpdateAction: "Update"`, and delete the entry on `UpdateAction: "Remove"`.
+`SecurityID` is informational and is not the merge key.
+
+<Warning>
+Rebuilding your security master from each message — rather than merging into the
+snapshot — silently empties it. Only the first message is a full set; every later
+message contains just the securities that changed, so a client that replaces its
+map on each message ends up believing only one or two symbols are tradable and
+rejects its own orders on everything else. Equally, a client that ignores
+`UpdateAction` keeps quoting and sizing against securities that have been
+withdrawn.
+</Warning>
+
+<Note>
+Three fields are not shaped the way the field table above implies, and a strict
+deserialiser will fail on them:
+
+- `SecurityID` is documented as a string but is published as a JSON number
+  (`"SecurityID": 2`). Parse it permissively; do not key anything off it.
+- `SizeBuckets` is documented as an array of decimals but is published as an
+  array of objects (`[{ "Size": "0" }]`).
+- `Expiration` is documented as a decimal, not a datetime, despite being a point
+  in time.
+
+`SizeDisplaySpec` is also present on the wire — the counterpart to
+`PriceDisplaySpec`. It is absent from this specification's field table but is a
+documented field on the underlying platform, so it is real rather than
+incidental. Treat it as display metadata.
+</Note>

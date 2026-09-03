@@ -1,0 +1,76 @@
+---
+title: "Trade"
+description: "Post-trade detail, including fees and settlement status."
+---
+
+Post-trade records. This is the authoritative stream for reconciliation — it
+carries fees and amounts explicitly, which the order streams do not.
+
+## Subscribe
+
+```json
+{
+  "reqid": 11,
+  "type": "subscribe",
+  "streams": [{ "name": "Trade", "StartDate": "2021-09-14T00:00:00.000000Z" }]
+}
+```
+
+### Parameters
+
+<ParamField body="StartDate" type="string">
+  Return trades after this time. Set it to the timestamp of the last trade you
+  processed to recover anything missed while disconnected.
+</ParamField>
+<ParamField body="EndDate" type="string">Return trades before this time.</ParamField>
+<ParamField body="Symbol" type="string">Filter by security.</ParamField>
+<ParamField body="OrderID" type="string">Filter by order ID.</ParamField>
+<ParamField body="RFQID" type="string">Filter by RFQ ID.</ParamField>
+
+## Response
+
+<ResponseField name="Timestamp" type="datetime" required>Timestamp of the message.</ResponseField>
+<ResponseField name="TradeID" type="string" required>Server-assigned trade ID (UUID).</ResponseField>
+<ResponseField name="OrderID" type="string" required>Server-assigned order ID (UUID).</ResponseField>
+<ResponseField name="TransactTime" type="datetime" required>Execution time.</ResponseField>
+<ResponseField name="Side" type="string" required>`Buy` or `Sell`.</ResponseField>
+<ResponseField name="ExecType" type="string" required>
+  The execution event. Same value set as on
+  [`ExecutionReport`](/trading-api/websocket/streams/order).
+</ResponseField>
+<ResponseField name="Currency" type="string" required>Currency of the quantity.</ResponseField>
+<ResponseField name="AmountCurrency" type="string" required>Currency of the amount.</ResponseField>
+<ResponseField name="Quantity" type="decimal" required>Trade quantity.</ResponseField>
+<ResponseField name="Amount" type="decimal" required>Trade amount.</ResponseField>
+<ResponseField name="Price" type="decimal">Limit price, when `OrdType` was `Limit`.</ResponseField>
+<ResponseField name="Fee" type="decimal" required>Trade fee.</ResponseField>
+<ResponseField name="FeeCurency" type="string">Cumulative fee currency.</ResponseField>
+<ResponseField name="TradeStatus" type="string" required>
+  `Pending`, `Confirmed`, or `Canceled`.
+</ResponseField>
+<ResponseField name="QuoteID" type="string">Quote ID, for RFQ orders.</ResponseField>
+<ResponseField name="RFQID" type="string">RFQ ID, for RFQ orders.</ResponseField>
+<ResponseField name="CustomerUser" type="string">Customer user associated with this trade.</ResponseField>
+
+<Warning>
+`TradeStatus` can move to `Canceled` after a trade first appears as `Pending` or
+`Confirmed`. A booking system that treats the first `Trade` message as final will
+carry cancelled trades indefinitely. Key on `TradeID` and apply the latest status.
+</Warning>
+
+## Reconciliation pattern
+
+<Steps>
+  <Step title="Persist the last processed timestamp">
+    Store the `Timestamp` of the last trade you durably recorded.
+  </Step>
+  <Step title="Resubscribe from that point">
+    On reconnect, subscribe with `StartDate` set to that value. Overlap is safe
+    because `TradeID` makes the operation idempotent.
+  </Step>
+  <Step title="Handle paging">
+    A wide date range will page. Follow the `next` value — see
+    [Subscriptions](/trading-api/websocket/subscriptions#page-a-large-stream).
+    Ignoring it silently truncates your history to the first page.
+  </Step>
+</Steps>

@@ -1,0 +1,80 @@
+---
+title: "Trading API"
+sidebarTitle: "Overview"
+description: "Real-time market data, RFQ, order execution, and balances over WebSocket, REST, and FIX."
+---
+
+The Trading API gives you programmatic access to the Trillion Digital OTC trading
+platform: streaming market data, request-for-quote, order execution, post-trade
+data, balances, and transfers.
+
+## Three protocols
+
+<CardGroup cols={3}>
+  <Card title="WebSocket" icon="bolt">
+    **The primary interface.** Market data, RFQ, order entry, execution reports,
+    balances, and transfers all run over one persistent connection.
+  </Card>
+  <Card title="REST" icon="server">
+    Historical OHLCV market data. A deliberately small surface.
+  </Card>
+  <Card title="FIX 4.4" icon="network-wired">
+    Standard FIX sessions for institutional order flow and market data.
+  </Card>
+</CardGroup>
+
+<Warning>
+The WebSocket API is not a secondary convenience — it carries the majority of the
+functionality. Order entry, quote requests, withdrawals, and deposits are all
+issued as WebSocket **commands**, not REST calls. If you are planning a
+REST-only integration, read [WebSocket commands](/trading-api/websocket/commands)
+first.
+</Warning>
+
+## What you can do
+
+| Capability | Protocol | Reference |
+| --- | --- | --- |
+| Stream tradeable securities | WebSocket | [Security](/trading-api/websocket/streams/security) |
+| Stream currencies and increments | WebSocket | [Currency](/trading-api/websocket/streams/currency) |
+| Stream live prices | WebSocket | [MarketDataSnapshot](/trading-api/websocket/streams/market-data-snapshot) |
+| Request and accept quotes (RFQ) | WebSocket | [Quote](/trading-api/websocket/streams/quote) |
+| Submit, amend, cancel orders | WebSocket | [Commands](/trading-api/websocket/commands) |
+| Track order state and fills | WebSocket | [Order](/trading-api/websocket/streams/order) |
+| Retrieve post-trade detail | WebSocket | [Trade](/trading-api/websocket/streams/trade) |
+| Monitor balances | WebSocket | [Balance](/trading-api/websocket/streams/balance) |
+| Monitor credit utilisation | WebSocket | [Credit and exposure](/trading-api/websocket/streams/credit) |
+| Request withdrawals and deposits | WebSocket | [Commands](/trading-api/websocket/commands) |
+| Query historical bars | REST | [REST endpoints](/trading-api/rest/endpoints) |
+
+## Conventions used throughout
+
+These hold for every message in the API.
+
+<ResponseField name="datetime" type="string">
+  An ISO-8601 UTC string with microsecond resolution — `2019-02-13T05:17:32.000000Z`.
+  Six fractional digits, always `Z`-suffixed. This format is also required for the
+  `ApiTimestamp` header and for the signed string.
+</ResponseField>
+
+<ResponseField name="decimal" type="string">
+  A **string-encoded** decimal. `"4.327"` represents the number 4.327. Quantities,
+  prices, fees, and amounts are all strings — never parse them as IEEE floats, and
+  never send them as JSON numbers.
+</ResponseField>
+
+<ResponseField name="reqid" type="number">
+  A client-assigned request identifier echoed on every response to that request.
+  It **cannot be 0**. See [Connection lifecycle](/trading-api/connection-lifecycle).
+</ResponseField>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/trading-api/quickstart">
+    Authenticate and receive your first market data message.
+  </Card>
+  <Card title="Authentication" icon="key" href="/trading-api/authentication">
+    How to build the HMAC signature correctly.
+  </Card>
+</CardGroup>

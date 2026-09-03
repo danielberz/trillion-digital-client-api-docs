@@ -1,0 +1,194 @@
+---
+title: "Currency & CurrencyConversion"
+sidebarTitle: "Currency"
+description: "Currency reference data and conversion rates."
+---
+
+## Currency
+
+Streams the currencies known to the platform and their increments. The first
+message carries a snapshot of every available currency and is flagged
+`initial: true`; every message after that is a **delta** against that snapshot.
+
+```json Client → server
+{
+  "reqid": 3,
+  "type": "subscribe",
+  "streams": [{ "name": "Currency" }]
+}
+```
+
+### Parameters
+
+<ParamField body="Symbols" type="string[]">
+  Optional list of currency symbols to filter the subscription on.
+</ParamField>
+
+### Response
+
+```json Server → client
+{
+  "reqid": 3,
+  "type": "Currency",
+  "ts": "2021-09-14T22:11:47.512168Z",
+  "initial": true,
+  "seq": 1,
+  "data": [
+    {
+      "Timestamp": "2020-09-30T17:56:08.552227Z",
+      "UpdateAction": "Update",
+      "CurrencyID": 2,
+      "Symbol": "USD",
+      "MinIncrement": "0.01",
+      "DefaultIncrement": "0.01",
+      "Description": "U.S. Dollar"
+    },
+    {
+      "Timestamp": "2020-05-13T13:24:58.983054Z",
+      "UpdateAction": "Update",
+      "CurrencyID": 17,
+      "Symbol": "ETH",
+      "MinIncrement": "0.00000001",
+      "DefaultIncrement": "0.0001",
+      "Description": "Ethereum"
+    }
+  ]
+}
+```
+
+<ResponseField name="Timestamp" type="datetime" required>Timestamp of message publication.</ResponseField>
+<ResponseField name="CurrencyID" type="string" required>System ID, informational only.</ResponseField>
+<ResponseField name="Symbol" type="string" required>Currency symbol.</ResponseField>
+<ResponseField name="MinIncrement" type="decimal" required>Minimum increment for the currency.</ResponseField>
+<ResponseField name="DefaultIncrement" type="decimal" required>
+  Default increment used in market data and orders.
+</ResponseField>
+<ResponseField name="Description" type="string" required>Description.</ResponseField>
+
+<Note>
+Rows also carry `UpdateAction` (`Update` in the published example), mirroring the
+[`Security`](/trading-api/websocket/streams/security) stream, but it is absent
+from the specification's response table, so its value set is not defined here.
+`CurrencyID` is specified as a string yet published as a JSON number
+(`"CurrencyID": 2`). Merge deltas on `Symbol` and treat `CurrencyID` as opaque.
+</Note>
+
+<Tip>
+`MinIncrement` here is the currency's own precision — distinct from a security's
+`MinSizeIncrement`. Use the security's increments to validate orders, and the
+currency's increment to format balances.
+</Tip>
+
+## CurrencyConversion
+
+Streams conversion rates between currencies. Useful for expressing balances or
+exposure in a single reporting currency.
+
+```json Client → server
+{
+  "reqid": 4,
+  "type": "subscribe",
+  "streams": [
+    {
+      "name": "CurrencyConversion",
+      "EquivalentCurrency": "USD",
+      "Currencies": ["BTC", "ETH", "BCH-USD"],
+      "Throttle": "15s",
+      "Tolerance": "0.0002"
+    }
+  ]
+}
+```
+
+### Parameters
+
+<ParamField body="EquivalentCurrency" type="string" required>
+  Quote currency to base the conversion rates on. It is a single string, so one
+  subscription reports against exactly one currency; a second reporting currency
+  needs a second subscription under its own `reqid`.
+</ParamField>
+<ParamField body="Currencies" type="string[]">
+  List of currencies and securities to generate conversion rates for — securities
+  are accepted alongside currencies, as in `["BTC", "ETH", "BCH-USD"]`. Defaults
+  to all available currencies.
+</ParamField>
+<ParamField body="Throttle" type="string">
+  Optional throttle interval for conversion rate updates. Minimum and default
+  value `10s`.
+</ParamField>
+<ParamField body="Tolerance" type="decimal">
+  Optional percentage change in the conversion rate required to trigger an
+  update. Minimum and default value `0.0001`, which the specification states is
+  1 bp.
+</ParamField>
+
+### Response
+
+```json Server → client
+{
+  "reqid": 4,
+  "type": "CurrencyConversion",
+  "ts": "2021-09-14T22:16:18.604996Z",
+  "initial": true,
+  "seq": 1,
+  "data": [
+    {
+      "Timestamp": "2021-09-14T22:16:18.604674Z",
+      "EquivalentCurrency": "USD",
+      "Currency": "ETH",
+      "Rate": "3368.16",
+      "Status": "Online",
+      "ConversionPath": "(ETH-USD)"
+    },
+    {
+      "Timestamp": "2021-09-14T22:16:18.604674Z",
+      "EquivalentCurrency": "USD",
+      "Currency": "BTC",
+      "Rate": "46841.35",
+      "Status": "Online",
+      "ConversionPath": "(BTC-USD)"
+    },
+    {
+      "Timestamp": "2021-09-14T22:16:18.604674Z",
+      "EquivalentCurrency": "USD",
+      "Currency": "BCH-USD",
+      "Rate": "639.530000000000",
+      "Status": "Online",
+      "ConversionPath": "(BCH-USD)"
+    }
+  ]
+}
+```
+
+<ResponseField name="Timestamp" type="datetime" required>Timestamp of message publication.</ResponseField>
+<ResponseField name="EquivalentCurrency" type="string" required>
+  Currency symbol for the equivalent currency.
+</ResponseField>
+<ResponseField name="Currency" type="string" required>
+  Currency symbol for the base currency on the conversion.
+</ResponseField>
+<ResponseField name="Rate" type="decimal" required>Currency conversion rate.</ResponseField>
+
+<Warning>
+This stream is deliberately lazy, and the last `Rate` you hold is not a live
+price. Updates are throttled — no more than one every `Throttle`, whose minimum
+**and** default is `10s` — and are suppressed entirely until the rate moves by at
+least `Tolerance`, whose minimum and default is `0.0001`. A rate can therefore be
+ten seconds old and off by a basis point while the stream is behaving exactly as
+specified. Use it for reporting and display; price and size trades from
+[`MarketDataSnapshot`](/trading-api/websocket/streams/market-data-snapshot) or an
+RFQ, never from a conversion rate.
+</Warning>
+
+<Note>
+Rows also carry `Status` and `ConversionPath` — `Online` and `(ETH-USD)` in the
+published example — neither of which appears in this specification's response
+table. `Status` is a documented field on the underlying platform and behaves as
+it does elsewhere; `ConversionPath` is not, so do not gate logic on it.
+</Note>
+
+<Note>
+For balances specifically, you do not need this stream — the
+[`Balance`](/trading-api/websocket/streams/balance) subscription accepts an
+`EquivalentCurrency` parameter and returns converted amounts inline.
+</Note>

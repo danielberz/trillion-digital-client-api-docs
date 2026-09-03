@@ -1,0 +1,206 @@
+---
+title: "TypeScript"
+description: "A typed WebSocket client with reconnection and resubscription."
+---
+
+```bash
+npm install ws
+npm install -D @types/ws
+```
+
+```typescript trillion-client.ts
+import { createHmac } from "node:crypto";
+import { EventEmitter } from "node:events";
+import WebSocket from "ws";
+
+/** ISO-8601 UTC with exactly six fractional digits. */
+const timestamp = (): string => new Date().toISOString().replace("Z", "000Z");
+
+export interface TrillionMessage {
+  reqid?: number;
+  type: string;
+  ts?: string;
+  seq?: number;
+  initial?: boolean;
+  action?: "Update" | "Remove";
+  next?: string;
+  data?: Record<string, unknown>[];
+}
+
+interface Subscription {
+  name: string;
+  [param: string]: unknown;
+}
+
+export class TrillionClient extends EventEmitter {
+  private ws?: WebSocket;
+  private readonly subscriptions = new Map<number, Subscription>();
+  private reqid = 0;
+  private attempt = 0;
+  private lastMessage = Date.now();
+  private stopped = false;
+  private heartbeat?: NodeJS.Timeout;
+
+  private static readonly PING_INTERVAL_MS = 20_000;
+  private static readonly PING_TIMEOUT_MS = 60_000;
+
+  constructor(
+    private readonly apiKey: string,
+    private readonly apiSecret: string,
+    private readonly host = "sandbox.trading.trilliondigital.io",
+    private readonly path = "/ws/v1",
+  ) {
+    super();
+  }
+
+  // -- signing ----------------------------------------------------------
+
+  private headers(): Record<string, string> {
+    const ts = timestamp();
+    const payload = ["GET", ts, this.host, this.path].join("\n");
+    const sign = createHmac("sha256", this.apiSecret)
+      .update(payload)
+      .digest("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_"); // padding retained
+
+    return { ApiKey: this.apiKey, ApiSign: sign, ApiTimestamp: ts };
+  }
+
+  private nextReqId(): number {
+    return ++this.reqid; // never 0
+  }
+
+  // -- public API -------------------------------------------------------
+
+  subscribe(name: string, params: Record<string, unknown> = {}): number {
+    const reqid = this.nextReqId();
+    this.subscriptions.set(reqid, { name, ...params });
+    this.send({ reqid, type: "subscribe", streams: [{ name, ...params }] });
+    return reqid;
+  }
+
+  command(type: string, payload: Record<string, unknown>): number {
+    const reqid = this.nextReqId();
+    this.send({ reqid, type, data: [payload] });
+    return reqid;
+  }
+
+  private send(message: unknown): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      this.emit("warning", "not connected; message dropped");
+    }
+  }
+
+  // -- lifecycle --------------------------------------------------------
+
+  connect(): void {
+    if (this.stopped) return;
+
+    // Signature is generated per attempt — never cache these headers.
+    this.ws = new WebSocket(`wss://${this.host}${this.path}`, {
+      headers: this.headers(),
+    });
+
+    this.ws.on("open", () => {
+      this.attempt = 0;
+      this.lastMessage = Date.now();
+      this.resubscribe();
+    });
+
+    this.ws.on("message", (raw) => {
+      this.lastMessage = Date.now();
+      const msg = JSON.parse(raw.toString()) as TrillionMessage;
+
+      switch (msg.type) {
+        case "hello":
+          this.emit("hello", msg);
+          return;
+        case "Pong":
+          return;
+        case "error":
+          this.emit("apiError", msg);
+          return;
+        default:
+          this.emit(msg.type, msg);
+      }
+    });
+
+    this.ws.on("close", () => this.scheduleReconnect());
+    this.ws.on("error", (err) => this.emit("warning", err.message));
+
+    this.startHeartbeat();
+  }
+
+  private resubscribe(): void {
+    for (const [reqid, sub] of this.subscriptions) {
+      this.send({ reqid, type: "subscribe", streams: [sub] });
+    }
+  }
+
+  /** A half-open socket never emits "close". Detect the silence instead. */
+  private startHeartbeat(): void {
+    clearInterval(this.heartbeat);
+    this.heartbeat = setInterval(() => {
+      if (Date.now() - this.lastMessage > TrillionClient.PING_TIMEOUT_MS) {
+        this.emit("warning", "no traffic; forcing reconnect");
+        this.ws?.terminate();
+        return;
+      }
+      this.send({ reqid: this.nextReqId(), type: "Ping", ts: timestamp() });
+    }, TrillionClient.PING_INTERVAL_MS);
+  }
+
+  private scheduleReconnect(): void {
+    if (this.stopped) return;
+    clearInterval(this.heartbeat);
+
+    const delay = Math.min(2 ** ++this.attempt * 1000, 60_000) + Math.random() * 1000;
+    this.emit("warning", `reconnecting in ${Math.round(delay)}ms`);
+    setTimeout(() => this.connect(), delay);
+  }
+
+  stop(): void {
+    this.stopped = true;
+    clearInterval(this.heartbeat);
+    this.ws?.close();
+  }
+}
+```
+
+## Usage
+
+```typescript
+const client = new TrillionClient(
+  process.env.TD_API_KEY!,
+  process.env.TD_API_SECRET!,
+);
+
+client.on("hello", (m) => console.log("session", m.data ?? m));
+client.on("warning", (m) => console.warn(m));
+
+client.on("MarketDataSnapshot", (msg) => {
+  for (const row of msg.data ?? []) {
+    const bids = row.Bids as { Price: string }[] | undefined;
+    console.log(row.Symbol, bids?.[0]?.Price);
+  }
+});
+
+client.connect();
+client.subscribe("MarketDataSnapshot", { Symbol: "BTC-USD", Throttle: "300ms" });
+```
+
+<Note>
+Subscribing before `connect()` resolves is safe — the subscription is recorded and
+replayed on open by `resubscribe()`, which is the same path used after a
+reconnect.
+</Note>
+
+<Warning>
+Prices, quantities, and fees arrive as **strings** to preserve precision. Do not
+coerce them to `number` for arithmetic — use a decimal library. A JavaScript
+`number` cannot represent `46817.27965000` exactly, and the rounding error is
+real money.
+</Warning>

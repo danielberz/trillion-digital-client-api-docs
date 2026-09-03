@@ -1,0 +1,75 @@
+---
+title: "Environments"
+description: "Sandbox and production endpoints for WebSocket, REST, and FIX."
+---
+
+Trillion Digital operates two isolated environments. Credentials, data, and
+account state are entirely separate between them.
+
+## Endpoints
+
+<Tabs>
+  <Tab title="Sandbox">
+    | Protocol | Endpoint |
+    | --- | --- |
+    | WebSocket | `wss://sandbox.trading.trilliondigital.io/ws/v1` |
+    | REST | `https://sandbox.trading.trilliondigital.io/v1` |
+    | Web terminal | `https://sandbox.trading.trilliondigital.io` |
+    | FIX | Provided during onboarding |
+
+    Simulated liquidity and test balances. Nothing here settles, and no real
+    funds move. Build and certify here first.
+  </Tab>
+  <Tab title="Production">
+    | Protocol | Endpoint |
+    | --- | --- |
+    | WebSocket | `wss://trading.trilliondigital.io/ws/v1` |
+    | REST | `https://trading.trilliondigital.io/v1` |
+    | Web terminal | `https://trading.trilliondigital.io` |
+    | FIX | Provided during onboarding |
+
+    Live liquidity and real settlement.
+  </Tab>
+</Tabs>
+
+<Warning>
+The host is part of the signed payload. Moving an integration from sandbox to
+production means changing the host in **both** the connection URL and the string
+you sign — changing only the URL produces a signature that will not verify.
+Read the host from one variable and derive both from it.
+</Warning>
+
+## Promotion checklist
+
+<Steps>
+  <Step title="Request production credentials">
+    Email [support@trilliondigital.io](mailto:support@trilliondigital.io). Keys
+    are issued per environment; your sandbox key will not work in production.
+  </Step>
+  <Step title="Parameterise the host">
+    Confirm the host is a single configuration value feeding the URL, the signed
+    payload, and any FIX settings.
+  </Step>
+  <Step title="Verify reconnect behaviour">
+    Exercise a forced disconnect against sandbox and confirm your client
+    re-authenticates with a fresh timestamp and resubscribes. See
+    [Connection lifecycle](/trading-api/connection-lifecycle).
+  </Step>
+  <Step title="Confirm limits">
+    If you expect more than roughly 10 concurrent WebSocket connections, contact
+    support before going live.
+  </Step>
+</Steps>
+
+## Rate limits
+
+There is currently no hard limit on concurrent WebSocket connections. If you
+expect more than approximately 10 active connections, contact
+[support@trilliondigital.io](mailto:support@trilliondigital.io) so capacity can be
+reviewed in advance.
+
+<Note>
+This limit is advisory today and may become enforced. Design your client to
+multiplex streams over a small number of connections rather than opening one
+connection per subscription.
+</Note>

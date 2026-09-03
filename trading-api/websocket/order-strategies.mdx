@@ -1,0 +1,292 @@
+---
+title: "Order Strategies"
+sidebarTitle: "Strategies"
+description: "Algorithmic order strategies, their parameters, and the order state change matrices."
+---
+
+`Strategy` on a [`NewOrderSingle`](/trading-api/websocket/commands) selects an
+execution algorithm; its settings travel in the `Parameters` object alongside it.
+`SteadyPace` and `StopLimit` are the two algorithmic strategies documented for
+`NewOrderSingle`. All progress — activation, clips, triggers, fills, terminal
+states — arrives on the
+[`Order` and `ExecutionReport`](/trading-api/websocket/streams/order) streams.
+
+## Trading strategy workflow
+
+Order responses and updates are delivered exclusively as `ExecutionReport`s, so
+subscribe to that stream before sending anything.
+
+<Steps>
+  <Step title="Subscribe to market data">
+    Subscribe to `MarketDataSnapshot` for the relevant securities.
+  </Step>
+  <Step title="Recover order state">
+    Subscribe to `ExecutionReport` with `StartDate` set to the `Timestamp` of the
+    last `ExecutionReport` you processed.
+  </Step>
+  <Step title="Recover trades">
+    Subscribe to `Trade` with `StartDate` set to the `Timestamp` of the last
+    `Trade` you processed, to pick up any missed fills.
+  </Step>
+  <Step title="Maintain local state">
+    Keep a map of (`OrderID`, last received `ExecutionReport`) for open orders,
+    and a set of `ClOrdID` for each pending request.
+  </Step>
+  <Step title="Submit">
+    Generate a new `ClOrdID` and send a `NewOrderSingle` specifying `ClOrdID`,
+    `Side`, `Price`, `OrderQty`, `Strategy` and the remaining parameters for that
+    request.
+  </Step>
+  <Step title="Confirm acceptance">
+    The response arrives on the `ExecutionReport` stream carrying the `ClOrdID`
+    you sent. If the order is accepted (`ExecType=PendingNew`), add it to your set
+    of open orders.
+  </Step>
+  <Step title="Amend or cancel">
+    Generate a **new** `ClOrdID` and send an `OrderCancelRequest` or
+    `OrderCancelReplaceRequest` specifying that `ClOrdID`, the `OrigClOrdID` from
+    the previous successful request, and the remaining parameters.
+  </Step>
+  <Step title="Process fills">
+    Fills arrive as `ExecutionReport` with `ExecType=Trade`.
+  </Step>
+</Steps>
+
+`ClOrdID` should be a UUID4 or another globally unique identifier. It must be
+unique daily and among any open order, and must be **less than 36 characters**.
+
+<Warning>
+A canonical hyphenated UUID4 is exactly 36 characters, which does not satisfy the
+documented "less than 36" limit — even though the API's own examples show
+hyphenated 36-character `ClOrdID`s. The 32-character hyphen-less form is inside
+the limit either way. Because `ClOrdID` is only required to be unique *daily*, a
+naive sequence-based scheme that resets each session will eventually collide with
+a still-open order from earlier in the day and have the request rejected.
+</Warning>
+
+## Supported order strategies
+
+Each strategy reads its own keys out of the `Parameters` object. `Parameters`
+additionally carries `ErrorAction` in the API's own `NewOrderSingle`,
+`OrderCancelReplaceRequest` and `Order` examples (`"ErrorAction": "Pause"`); it is
+not described in any parameter table, so its accepted values are undocumented.
+
+<Note>
+The `Strategy` field on `OrderCancelReplaceRequest` also names `Pegged`, `TWAP`,
+`FullAmount` and `TimeSliced` alongside `SteadyPace`. No parameters are specified
+for those four anywhere in the API reference, and `NewOrderSingle` documents only
+`SteadyPace` and `StopLimit` — confirm availability before building against them.
+</Note>
+
+### SteadyPace
+
+A schedule-based algorithm that divides an order into suborders (clips) and
+submits them at equal, user defined intervals.
+
+```json Client → server
+{
+  "reqid": 12,
+  "type": "NewOrderSingle",
+  "data": [
+    {
+      "Symbol": "BTC-USD",
+      "ClOrdID": "4d48992015da11ecb5e77f4881f01b7d",
+      "Side": "Buy",
+      "OrderQty": "4",
+      "OrdType": "Limit",
+      "Price": "43000",
+      "Currency": "BTC",
+      "TimeInForce": "GoodTillCancel",
+      "TransactTime": "2021-09-15T04:06:28.530000Z",
+      "Strategy": "SteadyPace",
+      "Parameters": {
+        "ClipSize": "0.5",
+        "ClipInterval": "2h45m",
+        "StartTime": "2021-09-15T05:00:00.000000Z",
+        "EndTime": "2021-09-16T05:00:00.000000Z",
+        "Variance": "0.1"
+      }
+    }
+  ]
+}
+```
+
+Eight clips of `0.5` at `2h45m` complete the `4` BTC parent inside the 24-hour
+`StartTime`–`EndTime` window. Size the clip and the interval so the schedule fits
+the window; work left over when `EndTime` passes does not execute.
+
+#### SteadyPace parameters
+
+<ParamField body="ClipSize" type="decimal" required>
+  A quantity (subset of the total order size) to send on each execution of the
+  schedule.
+</ParamField>
+<ParamField body="ClipInterval" type="string" required>
+  Time interval between individual clips, specified as an interval string.
+</ParamField>
+<ParamField body="StartTime" type="string">
+  Time at which this order will activate and begin sending orders. An ISO-8601
+  UTC string of the form `2019-02-13T05:17:32.000000Z`.
+</ParamField>
+<ParamField body="EndTime" type="string">
+  Optional expire time for the order. An ISO-8601 UTC string of the form
+  `2019-02-13T05:17:32.000000Z`.
+</ParamField>
+<ParamField body="Variance" type="decimal">
+  Optional degree of randomisation for clip sizes.
+</ParamField>
+
+An interval or duration string is a possibly signed sequence of decimal numbers,
+each with optional fraction and a unit suffix, such as `300ms` or `2h45m`. Valid
+time units are `ns`, `us` (or `µs`), `ms`, `s`, `m`, `h`.
+
+<Note>
+A `Variance` of `0.1` (implying a variance of 10%) for a clip size of `1.0` would
+result in clips ranging between `0.9` and `1.1`.
+</Note>
+
+### StopLimit
+
+This strategy will only place the order once the specified stop price has been
+met. For a Buy `StopLimit` order, the stop price must be **above** the current
+market price. For a Sell `StopLimit` order, the stop price must be **below** the
+current market price.
+
+```json Client → server
+{
+  "reqid": 18,
+  "type": "NewOrderSingle",
+  "data": [
+    {
+      "Symbol": "BTC-USD",
+      "ClOrdID": "b5e5257015da11ecb5e77f4881f01b7d",
+      "Side": "Buy",
+      "OrderQty": "0.5",
+      "OrdType": "Limit",
+      "Price": "44000",
+      "Currency": "BTC",
+      "TimeInForce": "GoodTillCancel",
+      "TransactTime": "2021-09-15T04:09:24.039000Z",
+      "Strategy": "StopLimit",
+      "Parameters": {
+        "TriggerPrice": "43500",
+        "EndTime": "2021-09-16T05:00:00.000000Z"
+      }
+    }
+  ]
+}
+```
+
+#### StopLimit parameters
+
+<ParamField body="TriggerPrice" type="decimal" required>
+  The price that must be met to trigger execution of the order with the
+  configured limit price.
+</ParamField>
+<ParamField body="EndTime" type="string">
+  Optional expire time for the order. An ISO-8601 UTC string of the form
+  `2019-02-13T05:17:32.000000Z`.
+</ParamField>
+
+<Warning>
+`OrderCancelReplaceRequest` supports `SteadyPace`, not `StopLimit`. Moving a
+trigger price therefore means cancelling and resubmitting, and the stop is not
+working between the `Canceled` report on the old order and the `New` report on
+the replacement.
+</Warning>
+
+## Order state change matrices
+
+The orders API follows FIX 4.4 semantics closely. The main difference is that
+instead of sending separate `OrderCancelReject` messages, two extra `ExecType`
+values are supported: `CancelRejected` and `ReplaceRejected`. The matrices below
+are heavily inspired by the FIX documentation. In each, `A` and `B` are
+`ClOrdID`s, and `ExecutionReport(B,A)` denotes a report carrying `ClOrdID` `B`
+and `OrigClOrdID` `A`. Rows sharing a `Time` value are alternative branches.
+
+### Filled order
+
+| Time | Request (ClOrdID,OrigClOrdID) | Response (ClOrdID,OrigClOrdID) | ExecType | OrdStatus | OrderQty | CumQty | LeavesQty | LastQty | Comment |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `NewOrderSingle(A)` | | | | 10 | | | | |
+| 2 | | `ExecutionReport(A)` | `PendingNew` | `PendingNew` | 10 | 0 | 10 | | |
+| 3 | | `ExecutionReport(A)` | `Rejected` | `Rejected` | 10 | 0 | 10 | | If order is rejected |
+| 3 | | `ExecutionReport(A)` | `New` | `New` | 10 | 0 | 10 | | |
+| 4 | | `ExecutionReport(A)` | `Trade` | `PartiallyFilled` | 10 | 2 | 8 | 2 | |
+| 5 | | `ExecutionReport(A)` | `Trade` | `PartiallyFilled` | 10 | 3 | 7 | 1 | |
+| 6 | | `ExecutionReport(A)` | `Trade` | `Filled` | 10 | 10 | 0 | 7 | |
+
+<Note>
+Orders with `CumQty > 0` will receive an `ExecutionReport` that will have
+`CumQty` for the filled size of the order. Orders that are partially filled and
+cancelled will receive an `ExecutionReport` with a terminal state (`Canceled`)
+and a `CumQty > 0`.
+</Note>
+
+### Canceled order
+
+| Time | Request (ClOrdID,OrigClOrdID) | Response (ClOrdID,OrigClOrdID) | ExecType | OrdStatus | OrderQty | CumQty | LeavesQty | LastQty | Comment |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `NewOrderSingle(A)` | | | | 10 | | | | |
+| 2 | | `ExecutionReport(A)` | `PendingNew` | `PendingNew` | 10 | 0 | 10 | | |
+| 3 | | `ExecutionReport(A)` | `Rejected` | `Rejected` | 10 | 0 | 10 | | If order is rejected |
+| 3 | | `ExecutionReport(A)` | `New` | `New` | 10 | 0 | 10 | | |
+| 4 | `OrderCancelRequest(B,A)` | | | | | | | | |
+| 5 | | `ExecutionReport(B,A)` | `CancelRejected` | `New` | 10 | 0 | 10 | | If cancel is rejected |
+| 5 | | `ExecutionReport(B,A)` | `PendingCancel` | `PendingCancel` | 10 | 0 | 10 | | |
+| 6 | | `ExecutionReport(B,A)` | `CancelRejected` | `New` | 10 | 0 | 10 | | If cancel is rejected |
+| 7 | | `ExecutionReport(B,A)` | `Canceled` | `Canceled` | 10 | 0 | 0 | | |
+
+<Warning>
+A cancel can be rejected **after** `PendingCancel` has already been published
+(time 6). `PendingCancel` is not a commitment that the order will be cancelled —
+the order returns to `OrdStatus=New` and keeps working. Treating `PendingCancel`
+as terminal, and releasing the position or the risk limit at that point, leaves
+you holding a live order you believe is dead.
+</Warning>
+
+### Replace to increase quantity
+
+| Time | Request (ClOrdID,OrigClOrdID) | Response (ClOrdID,OrigClOrdID) | ExecType | OrdStatus | OrderQty | CumQty | LeavesQty | LastQty | Comment |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `NewOrderSingle(A)` | | | | 10 | | | | |
+| 2 | | `ExecutionReport(A)` | `PendingNew` | `PendingNew` | 10 | 0 | 10 | | |
+| 3 | | `ExecutionReport(A)` | `New` | `New` | 10 | 0 | 10 | | |
+| 4 | `OrderCancelReplaceRequest(B,A)` | | | | 11 | | | | |
+| 5 | | `ExecutionReport(B,A)` | `ReplaceRejected` | `New` | 10 | 0 | 10 | | If replace is rejected |
+| 5 | | `ExecutionReport(B,A)` | `PendingReplace` | `PendingReplace` | 10 | 0 | 10 | | |
+| 6 | | `ExecutionReport(B,A)` | `CancelRejected` | `New` | 10 | 0 | 10 | | If replace is rejected |
+| 7 | | `ExecutionReport(B,A)` | `Replaced` | `New` | 11 | 0 | 0 | | |
+| 8 | | `ExecutionReport(B)` | `Trade` | `PartiallyFilled` | 11 | 1 | 10 | 1 | |
+
+<Note>
+From time 8 onwards reports carry only the new `ClOrdID` (`B`), with no
+`OrigClOrdID` linking them back to `A`. This is why the workflow above keys the
+open-order map on `OrderID` and tracks `ClOrdID` separately, per pending request.
+</Note>
+
+### Replace during fill
+
+| Time | Request (ClOrdID,OrigClOrdID) | Response (ClOrdID,OrigClOrdID) | ExecType | OrdStatus | OrderQty | CumQty | LeavesQty | LastQty | Comment |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `NewOrderSingle(A)` | | | | 10 | | | | |
+| 2 | | `ExecutionReport(A)` | `PendingNew` | `PendingNew` | 10 | 0 | 10 | | |
+| 3 | | `ExecutionReport(A)` | `New` | `New` | 10 | 0 | 10 | | |
+| 4 | `OrderCancelReplaceRequest(B,A)` | | | | 8 | | | | |
+| 5 | | `ExecutionReport(A)` | `Trade` | `PartiallyFilled` | 10 | 1 | 9 | 1 | Fill before replace received |
+| 6 | | `ExecutionReport(B,A)` | `PendingReplace` | `PendingReplace` | 10 | 1 | 9 | | |
+| 7 | | `ExecutionReport(A)` | `Trade` | `PendingReplace` | 10 | 3 | 7 | 2 | Fill before replace processed |
+| 8 | | `ExecutionReport(B,A)` | `Replaced` | `New` | 8 | 3 | 5 | | |
+| 9 | | `ExecutionReport(B)` | `Trade` | `Filled` | 8 | 8 | 0 | 5 | |
+
+<Warning>
+A replace is not atomic with the market. Fills continue to arrive against the
+original `ClOrdID` (`A`) both before the request is received and while it is
+`PendingReplace` — at time 7 an `ExecType=Trade` is published with
+`OrdStatus=PendingReplace`, and at time 8 the `Replaced` report carries
+`OrdStatus=New` even though `CumQty` is 3. Never derive open quantity by
+subtracting your own requested `OrderQty` from your fill tally, and never ignore
+`Trade` events on the old `ClOrdID` while a replace is outstanding: read
+`LeavesQty` and `CumQty` from the reports as published, or you will over- or
+under-hedge by the quantity that traded during the replace window.
+</Warning>

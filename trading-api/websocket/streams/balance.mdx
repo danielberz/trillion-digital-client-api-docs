@@ -1,0 +1,100 @@
+---
+title: "Balance & BalanceTransaction"
+sidebarTitle: "Balance"
+description: "Current balances and the transactions that move them."
+---
+
+## Balance
+
+Streams current balances per currency.
+
+```json
+{
+  "reqid": 20,
+  "type": "subscribe",
+  "streams": [{ "name": "Balance", "EquivalentCurrency": "USD" }]
+}
+```
+
+### Parameters
+
+<ParamField body="Currencies" type="string[]">
+  Currencies to filter on. Defaults to all available currencies.
+</ParamField>
+<ParamField body="EquivalentCurrency" type="string">
+  If provided, each balance also carries a converted amount in this currency.
+</ParamField>
+
+### Response
+
+<ResponseField name="Currency" type="string" required>Currency of this balance update.</ResponseField>
+<ResponseField name="Amount" type="decimal" required>Current balance.</ResponseField>
+<ResponseField name="AvailableAmount" type="decimal" required>
+  Amount available for trading right now.
+</ResponseField>
+<ResponseField name="Equivalent" type="object[]">
+  Present when `EquivalentCurrency` was requested.
+  <Expandable title="equivalent">
+    <ResponseField name="Currency" type="string">The requested equivalent currency.</ResponseField>
+    <ResponseField name="Amount" type="decimal">Balance in the equivalent currency.</ResponseField>
+    <ResponseField name="AvailableAmount" type="decimal">
+      Available amount in the equivalent currency.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Warning>
+`Amount` and `AvailableAmount` are different numbers and confusing them causes
+rejected orders. `Amount` is the total balance; `AvailableAmount` excludes
+funds already committed to working orders and pending withdrawals. **Size orders
+against `AvailableAmount`.**
+</Warning>
+
+<Tip>
+Requesting `EquivalentCurrency` is cheaper and more consistent than subscribing to
+`CurrencyConversion` and doing the arithmetic yourself — the conversion is applied
+server-side at the same instant as the balance.
+</Tip>
+
+## BalanceTransaction
+
+Streams the deposits, withdrawals, and adjustments that move balances.
+
+```json
+{
+  "reqid": 21,
+  "type": "subscribe",
+  "streams": [{ "name": "BalanceTransaction" }]
+}
+```
+
+### Parameters
+
+None.
+
+### Response
+
+<ResponseField name="Timestamp" type="datetime" required>Timestamp of the message.</ResponseField>
+<ResponseField name="TransactionID" type="string" required>Server-assigned transaction ID.</ResponseField>
+<ResponseField name="ClReqID" type="string" required>Your client-assigned request ID.</ResponseField>
+<ResponseField name="TransactionType" type="string" required>`Withdrawal` or `Deposit`.</ResponseField>
+<ResponseField name="Status" type="string" required>
+  One of `PendingApproval`, `PendingTransfer`, `Rejected`, `Completed`.
+</ResponseField>
+<ResponseField name="Currency" type="string" required>Currency of the quantity.</ResponseField>
+<ResponseField name="Quantity" type="decimal" required>Transaction quantity.</ResponseField>
+<ResponseField name="MarketAccount" type="string" required>Account the transaction applies to.</ResponseField>
+<ResponseField name="Revision" type="string" required>Revision of this transaction.</ResponseField>
+<ResponseField name="LastUpdateTime" type="datetime">Time of the most recent update.</ResponseField>
+<ResponseField name="AddressID" type="string">ID of the address holding routing details.</ResponseField>
+<ResponseField name="RoutingInfo" type="object">
+  Routing details. Included when the `RoutingInfo` supplied on the withdraw
+  request did not map to an existing address.
+</ResponseField>
+
+<Note>
+Only transactions in `PendingApproval` can be cancelled, via
+[`WithdrawCancelRequest`](/trading-api/websocket/commands#withdrawcancelrequest).
+Once a transaction reaches `PendingTransfer` it can no longer be recalled through
+the API.
+</Note>

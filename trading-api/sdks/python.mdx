@@ -1,0 +1,206 @@
+---
+title: "Python"
+description: "A production-shaped WebSocket client with reconnection and resubscription."
+---
+
+The [Quickstart](/trading-api/quickstart) deliberately omits error handling. This
+is closer to what you would actually run: a client that signs correctly,
+heartbeats, reconnects with backoff, and replays its subscriptions.
+
+```bash
+pip install websocket-client
+```
+
+```python trillion_client.py
+"""Minimal production-shaped client for the Trillion Digital Trading API."""
+
+import base64
+import hashlib
+import hmac
+import json
+import logging
+import random
+import threading
+import time
+from datetime import datetime, timezone
+from typing import Any, Callable
+
+import websocket  # pip install websocket-client
+
+log = logging.getLogger("trillion")
+
+
+def _timestamp() -> str:
+    """ISO-8601 UTC with exactly six fractional digits."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+
+
+class TrillionClient:
+    PING_INTERVAL = 20.0   # seconds between pings
+    PING_TIMEOUT = 60.0    # no traffic for this long => treat as dead
+
+    def __init__(self, api_key: str, api_secret: str,
+                 host: str = "sandbox.trading.trilliondigital.io"):
+        self._key = api_key
+        self._secret = api_secret
+        self._host = host
+        self._path = "/ws/v1"
+
+        self._ws: websocket.WebSocketApp | None = None
+        self._subscriptions: dict[int, dict[str, Any]] = {}
+        self._handlers: dict[str, Callable[[dict], None]] = {}
+        self._reqid = 0
+        self._lock = threading.Lock()
+        self._last_message = time.time()
+        self._stop = threading.Event()
+
+    # -- signing ----------------------------------------------------------
+
+    def _headers(self) -> dict[str, str]:
+        ts = _timestamp()
+        payload = "\n".join(["GET", ts, self._host, self._path])
+        digest = hmac.new(
+            self._secret.encode("ascii"), payload.encode("ascii"), hashlib.sha256
+        ).digest()
+        return {
+            "ApiKey": self._key,
+            "ApiSign": base64.urlsafe_b64encode(digest).decode(),
+            "ApiTimestamp": ts,
+        }
+
+    def _next_reqid(self) -> int:
+        with self._lock:
+            self._reqid += 1        # never 0
+            return self._reqid
+
+    # -- public API -------------------------------------------------------
+
+    def on(self, message_type: str, handler: Callable[[dict], None]) -> None:
+        self._handlers[message_type] = handler
+
+    def subscribe(self, name: str, **params: Any) -> int:
+        reqid = self._next_reqid()
+        self._subscriptions[reqid] = {"name": name, **params}
+        self._send({"reqid": reqid, "type": "subscribe",
+                    "streams": [{"name": name, **params}]})
+        return reqid
+
+    def command(self, command_type: str, payload: dict) -> int:
+        reqid = self._next_reqid()
+        self._send({"reqid": reqid, "type": command_type, "data": [payload]})
+        return reqid
+
+    def _send(self, message: dict) -> None:
+        if self._ws and self._ws.sock and self._ws.sock.connected:
+            self._ws.send(json.dumps(message))
+        else:
+            log.warning("not connected; dropped %s", message.get("type"))
+
+    # -- lifecycle --------------------------------------------------------
+
+    def _on_message(self, _ws, raw: str) -> None:
+        self._last_message = time.time()
+        msg = json.loads(raw)
+        mtype = msg.get("type")
+
+        if mtype == "hello":
+            log.info("session %s", msg.get("session_id"))
+            return
+        if mtype in ("Pong", "error"):
+            if mtype == "error":
+                log.error("reqid=%s %s", msg.get("reqid"), msg.get("data"))
+            return
+
+        handler = self._handlers.get(mtype)
+        if handler:
+            for row in msg.get("data", []):
+                handler(row)
+
+    def _resubscribe(self) -> None:
+        """Subscriptions do not survive a reconnect — replay them."""
+        for reqid, sub in list(self._subscriptions.items()):
+            self._send({"reqid": reqid, "type": "subscribe", "streams": [sub]})
+        log.info("resubscribed to %d stream(s)", len(self._subscriptions))
+
+    def _heartbeat(self) -> None:
+        """A half-open socket never fires on_close. Detect it ourselves."""
+        while not self._stop.is_set():
+            time.sleep(self.PING_INTERVAL)
+            if time.time() - self._last_message > self.PING_TIMEOUT:
+                log.warning("no traffic in %.0fs; forcing reconnect", self.PING_TIMEOUT)
+                if self._ws:
+                    self._ws.close()
+                continue
+            self._send({"reqid": self._next_reqid(), "type": "Ping",
+                        "ts": _timestamp()})
+
+    def run_forever(self) -> None:
+        threading.Thread(target=self._heartbeat, daemon=True).start()
+        attempt = 0
+
+        while not self._stop.is_set():
+            self._ws = websocket.WebSocketApp(
+                f"wss://{self._host}{self._path}",
+                header=self._headers(),          # fresh signature each attempt
+                on_open=lambda _ws: self._resubscribe(),
+                on_message=self._on_message,
+                on_error=lambda _ws, e: log.error("socket error: %s", e),
+            )
+            self._last_message = time.time()
+            self._ws.run_forever()
+
+            if self._stop.is_set():
+                break
+
+            attempt += 1
+            delay = min(2 ** attempt, 60) + random.uniform(0, 1)  # backoff + jitter
+            log.info("reconnecting in %.1fs", delay)
+            time.sleep(delay)
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._ws:
+            self._ws.close()
+
+
+if __name__ == "__main__":
+    import os
+
+    logging.basicConfig(level=logging.INFO)
+
+    client = TrillionClient(os.environ["TD_API_KEY"], os.environ["TD_API_SECRET"])
+    client.on("MarketDataSnapshot", lambda r: print(
+        r["Symbol"],
+        r["Bids"][0]["Price"] if r.get("Bids") else None,
+        r["Offers"][0]["Price"] if r.get("Offers") else None,
+    ))
+    client.subscribe("MarketDataSnapshot", Symbol="BTC-USD", Throttle="300ms")
+    client.run_forever()
+```
+
+## What this handles that the quickstart does not
+
+<CardGroup cols={2}>
+  <Card title="Fresh signature per attempt" icon="key">
+    `_headers()` is called inside the reconnect loop, so every attempt signs with
+    a current timestamp. Caching headers is the most common reconnect bug.
+  </Card>
+  <Card title="Half-open detection" icon="heart-pulse">
+    A TCP connection can die without firing `on_close`. The heartbeat thread
+    forces a reconnect when traffic stops.
+  </Card>
+  <Card title="Resubscription" icon="arrows-rotate">
+    Subscriptions are stored by `reqid` and replayed on `on_open`.
+  </Card>
+  <Card title="Backoff with jitter" icon="clock">
+    Exponential backoff capped at 60s, plus jitter so a fleet does not reconnect
+    in lockstep.
+  </Card>
+</CardGroup>
+
+<Warning>
+This example does not persist state. For anything that trades, you also need to
+reconcile on reconnect — resubscribe to `Trade` with `StartDate` set to your last
+processed timestamp, and never assume an in-flight order failed just because you
+lost the socket. See [Errors](/trading-api/errors).
+</Warning>

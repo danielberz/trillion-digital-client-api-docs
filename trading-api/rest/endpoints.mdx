@@ -1,0 +1,74 @@
+---
+title: "Endpoints"
+description: "The REST surface available to client accounts."
+---
+
+The client-facing REST surface is **historical market data**. Everything else —
+market data streaming, RFQ, order entry, execution reports, trades, balances, and
+transfers — is on the
+[WebSocket API](/trading-api/websocket/overview) or
+[FIX](/trading-api/fix/overview).
+
+## OHLCV bars
+
+<ParamField path="GET /v1/symbols/{symbol}/ohlcv/{resolution}" type="endpoint">
+  Historical open/high/low/close/volume bars for a security.
+
+  ```
+  https://sandbox.trading.trilliondigital.io/v1/symbols/BTC-USD/ohlcv/1D
+  ```
+
+  <ParamField path="symbol" type="string" required>
+    A security symbol, as published on the
+    [`Security`](/trading-api/websocket/streams/security) stream — for example
+    `BTC-USD`.
+  </ParamField>
+
+  <ParamField path="resolution" type="string" required>
+    Bar size, for example `1D`. Confirm the resolutions enabled for your account
+    with [support@trilliondigital.io](mailto:support@trilliondigital.io).
+  </ParamField>
+</ParamField>
+
+Requests are authenticated with the same three headers as the WebSocket
+handshake — see [Authentication](/trading-api/authentication). The signed string
+for REST appends query and body when they are non-empty:
+
+```
+GET\n<ApiTimestamp>\n<host>\n<path>[\nquery][\nbody]
+```
+
+## Where to find everything else
+
+<Warning>
+If you are looking for orders, trades, balances or transfers over REST, they are
+not there. The Trading API is **WebSocket-first**, and this is the single most
+common wrong assumption when starting an integration.
+</Warning>
+
+| You want | Use |
+| --- | --- |
+| Tradeable securities and their increments | [`Security`](/trading-api/websocket/streams/security) stream |
+| Currencies and increments | [`Currency`](/trading-api/websocket/streams/currency) stream |
+| Live prices | [`MarketDataSnapshot`](/trading-api/websocket/streams/market-data-snapshot) stream |
+| Quotes and RFQ | [`Quote`](/trading-api/websocket/streams/quote) stream |
+| Order state and fills | [`Order` / `ExecutionReport`](/trading-api/websocket/streams/order) |
+| Trade history | [`Trade`](/trading-api/websocket/streams/trade) stream, with `StartDate` |
+| Balances | [`Balance`](/trading-api/websocket/streams/balance) stream |
+| Credit utilisation | [`Exposure`](/trading-api/websocket/streams/credit) stream |
+| Submitting orders and transfers | [WebSocket commands](/trading-api/websocket/commands) |
+
+<Note>
+Historical reads are done by subscribing with a `StartDate`, not by polling an
+endpoint. See
+[Subscriptions](/trading-api/websocket/subscriptions) — and note that wide date
+ranges page, so follow the `next` cursor or you will silently receive only the
+first page.
+</Note>
+
+<Tip>
+Reporting-style access over plain REST is what the
+[Platform API](/platform-api/overview) is being designed to provide. It is not
+available yet; until it is, historical reads run through the WebSocket streams
+above.
+</Tip>

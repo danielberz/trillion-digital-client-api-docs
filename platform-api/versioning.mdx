@@ -1,0 +1,85 @@
+---
+title: "Versioning"
+description: "Date-based versions pinned per request."
+---
+
+<Warning>
+This API is in design and not yet available. See
+[Overview](/platform-api/overview).
+</Warning>
+
+Specify the API version on every request.
+
+```bash
+curl -H "Trillion-Version: 2026-09-01" ...
+```
+
+Responses echo the version served:
+
+```
+Trillion-Version: 2026-09-01
+```
+
+## How versions work
+
+Versions are **dates**. A breaking change creates a new dated version; your
+requests keep receiving the version you pin until you choose to move.
+
+<ResponseField name="Pinned version">
+  The version in your request header. Always prefer this.
+</ResponseField>
+<ResponseField name="Account default">
+  Applied when no header is sent — the version current when your account was
+  created.
+</ResponseField>
+
+<Warning>
+Always send the header explicitly. Relying on an account default means the
+version your code receives is a property of when the account was opened rather
+than of your code — invisible in your repository and impossible to reason about
+during an incident.
+</Warning>
+
+## What counts as breaking
+
+<CardGroup cols={2}>
+  <Card title="Breaking — new version" icon="triangle-exclamation">
+    Removing or renaming a field; changing a type; adding a required request
+    parameter; changing an existing enum's meaning; changing the shape of a
+    response.
+  </Card>
+  <Card title="Non-breaking — same version" icon="check">
+    Adding an optional request parameter; adding a response field; adding a new
+    endpoint; adding a **new value** to an existing enum.
+  </Card>
+</CardGroup>
+
+<Warning>
+Note that adding a value to an enum is **not** breaking. Your client must
+tolerate unknown enum values without crashing — parse defensively and handle the
+default case. A parser that throws on an unrecognised status will break on a
+routine, non-breaking release.
+</Warning>
+
+## Upgrading
+
+<Steps>
+  <Step title="Read the changelog">
+    Each version documents exactly what changed.
+  </Step>
+  <Step title="Test in sandbox">
+    Pin the new version with a `tdk_test_` key and run your suite.
+  </Step>
+  <Step title="Deploy the header change">
+    Move production once sandbox passes.
+  </Step>
+  <Step title="Verify the echo">
+    Confirm responses carry the version you expect.
+  </Step>
+</Steps>
+
+<Note>
+Old versions are supported for a defined window after a successor ships, with the
+deprecation date published in the changelog. You are never forced to upgrade
+without notice.
+</Note>

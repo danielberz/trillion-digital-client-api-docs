@@ -1,0 +1,265 @@
+---
+title: "Commands"
+description: "Submitting orders, quote requests, and transfers over the WebSocket."
+---
+
+Commands perform actions. They share one envelope: `type` is the command name and
+`data` is an array containing the command payload.
+
+```json Envelope
+{
+  "reqid": 12,
+  "type": "<CommandName>",
+  "data": [ { /* command payload */ } ]
+}
+```
+
+<Warning>
+A command's response is an acknowledgement or an error — **not** the resulting
+entity. Outcomes are published on the associated subscription. Subscribe to
+`Order`, `ExecutionReport`, `Trade`, `Quote`, and `BalanceTransaction` **before**
+issuing commands, or you will not see your own results.
+</Warning>
+
+## Orders
+
+### NewOrderSingle
+
+Submits an order, either against available liquidity or against an open RFQ.
+Results appear on the `Order`, `ExecutionReport`, and `Trade` streams.
+
+```json
+{
+  "reqid": 12,
+  "type": "NewOrderSingle",
+  "data": [
+    {
+      "Symbol": "BTC-USD",
+      "ClOrdID": "4d489920-15da-11ec-b5e7-7f4881f01b7d",
+      "Side": "Buy",
+      "TransactTime": "2021-09-15T04:06:28.530000Z",
+      "OrderQty": "0.5",
+      "OrdType": "Limit",
+      "Price": "43000",
+      "Currency": "BTC",
+      "TimeInForce": "GoodTillCancel",
+      "Strategy": "Limit",
+      "Parameters": { "ErrorAction": "Pause" }
+    }
+  ]
+}
+```
+
+<ParamField body="Symbol" type="string" required>Security to trade.</ParamField>
+<ParamField body="ClOrdID" type="string" required>
+  Unique client order ID, usually a UUID. Your idempotency handle — generate it
+  before sending and persist it.
+</ParamField>
+<ParamField body="Side" type="string" required>`Buy` or `Sell`.</ParamField>
+<ParamField body="OrderQty" type="decimal" required>Quantity in units of `Currency`.</ParamField>
+<ParamField body="OrdType" type="string" required>`Market`, `Limit`, or `RFQ`.</ParamField>
+<ParamField body="TimeInForce" type="string" required>
+  `GoodTillCancel`, `FillAndKill`, or `FillOrKill`.
+</ParamField>
+<ParamField body="Price" type="decimal">Limit price. Required when `OrdType` is `Limit`.</ParamField>
+<ParamField body="Currency" type="string">
+  Currency the quantity is expressed in. Defaults to the symbol's base currency.
+</ParamField>
+<ParamField body="QuoteID" type="string">Quote to trade on. Required when `OrdType` is `RFQ`.</ParamField>
+<ParamField body="RFQID" type="string">RFQ to trade on. Required when `OrdType` is `RFQ`.</ParamField>
+<ParamField body="Strategy" type="string">
+  Optional order strategy. `SteadyPace` and `StopLimit` are supported for
+  algorithmic orders.
+</ParamField>
+<ParamField body="AllowedSlippage" type="decimal">
+  Allowed price slippage for a Limit order placed against an RFQ.
+</ParamField>
+<ParamField body="Parameters" type="object">Strategy-specific parameters.</ParamField>
+<ParamField body="TransactTime" type="datetime">Client-side submission time.</ParamField>
+
+<Tip>
+`Currency` decides what `OrderQty` means. On `BTC-USD` with `Currency: "BTC"`,
+`OrderQty: "0.5"` is half a bitcoin; with `Currency: "USD"` it is fifty cents of
+notional. Set it explicitly rather than relying on the default.
+</Tip>
+
+### OrderCancelRequest
+
+Cancels an open order. Supply either `OrderID` or `OrigClOrdID`.
+
+```json
+{
+  "reqid": 13,
+  "type": "OrderCancelRequest",
+  "data": [
+    {
+      "ClOrdID": "c0be17e0-15da-11ec-b5e7-7f4881f01b7d",
+      "OrderID": "16a55364-4248-4575-aa0b-dddd3f694ca3",
+      "TransactTime": "2021-09-15T04:09:42.238000Z"
+    }
+  ]
+}
+```
+
+<ParamField body="ClOrdID" type="string" required>New unique ID for the cancel request itself.</ParamField>
+<ParamField body="Symbol" type="string" required>Symbol of the order being cancelled.</ParamField>
+<ParamField body="TransactTime" type="datetime" required>Submission time.</ParamField>
+<ParamField body="OrderID" type="string">Server order ID. One of `OrderID` or `OrigClOrdID` is required.</ParamField>
+<ParamField body="OrigClOrdID" type="string">Client order ID of the order to cancel.</ParamField>
+
+### OrderCancelReplaceRequest
+
+Amends a working order. Same shape as `NewOrderSingle` plus the identifier of the
+order being replaced. Only `SteadyPace` strategies are supported for amendment.
+
+### OrderControlRequest
+
+Controls a working algorithmic order — pause, resume, or stop.
+
+## RFQ
+
+### QuoteRequest
+
+Opens an RFQ. Results appear on the [`Quote`](/trading-api/websocket/streams/quote)
+stream.
+
+```json
+{
+  "reqid": 15,
+  "type": "QuoteRequest",
+  "data": [
+    {
+      "QuoteReqID": "8e9540d0-15db-11ec-b5e7-7f4881f01b7d",
+      "OrderQty": "0.75",
+      "Currency": "BTC",
+      "Symbol": "BTC-USD",
+      "TransactTime": "2021-09-15T04:15:27.581000Z",
+      "Parameters": {}
+    }
+  ]
+}
+```
+
+<ParamField body="QuoteReqID" type="string" required>Unique ID for this request, usually a UUID.</ParamField>
+<ParamField body="Symbol" type="string" required>Security to quote.</ParamField>
+<ParamField body="Currency" type="string" required>Currency the quantity is expressed in.</ParamField>
+<ParamField body="OrderQty" type="decimal" required>Requested quantity in units of `Currency`.</ParamField>
+<ParamField body="Side" type="string">
+  `Buy` or `Sell` for a one-sided request. **Omit for a two-way quote.**
+</ParamField>
+<ParamField body="TransactTime" type="datetime">Submission time.</ParamField>
+
+### QuoteCancelRequest
+
+```json
+{
+  "reqid": 16,
+  "type": "QuoteCancelRequest",
+  "data": [
+    {
+      "QuoteReqID": "8e9540d0-15db-11ec-b5e7-7f4881f01b7d",
+      "RFQID": "f47bfb99-4d1e-4179-b62c-a96e83cc93ba",
+      "TransactTime": "2021-09-15T04:15:24.581000Z"
+    }
+  ]
+}
+```
+
+Both `QuoteReqID` and `RFQID` are required and must refer to the same RFQ.
+
+## Transfers
+
+### NewWithdrawRequest
+
+```json
+{
+  "reqid": 34,
+  "type": "NewWithdrawRequest",
+  "data": [
+    {
+      "Quantity": "1",
+      "Currency": "ETH",
+      "MarketAccount": "default",
+      "RoutingInfo": {
+        "WalletAddress": "XXYYZZ",
+        "Memo": "",
+        "DestinationTag": ""
+      },
+      "ClReqID": "06b78113c1454174b9e403a1245d67ea"
+    }
+  ]
+}
+```
+
+<ParamField body="ClReqID" type="string" required>Unique ID for this request, usually a UUID.</ParamField>
+<ParamField body="Currency" type="string" required>Currency of the quantity.</ParamField>
+<ParamField body="Quantity" type="decimal" required>Amount to withdraw.</ParamField>
+<ParamField body="RoutingInfo" type="object">
+  Destination details such as `WalletAddress`, `Memo`, `DestinationTag`. If it
+  cannot be matched to an existing address it is carried on the resulting
+  `BalanceTransaction`. **Cannot be combined with `AddressID`.**
+</ParamField>
+<ParamField body="AddressID" type="string">
+  A pre-registered address to withdraw to. **Cannot be combined with
+  `RoutingInfo`.**
+</ParamField>
+
+<Warning>
+`RoutingInfo` and `AddressID` are mutually exclusive. Prefer `AddressID` against
+a whitelisted address — see
+[Wallet whitelisting](/guides/settlement/wallet-whitelisting).
+</Warning>
+
+### WithdrawCancelRequest
+
+```json
+{
+  "reqid": 34,
+  "type": "WithdrawCancelRequest",
+  "data": [{ "TransactionID": "1E19VMG980R00" }]
+}
+```
+
+<Note>
+Only transactions in `PendingApproval` state can be cancelled.
+</Note>
+
+### NewDepositRequest
+
+Notifies the platform of an incoming deposit.
+
+```json
+{
+  "reqid": 34,
+  "type": "NewDepositRequest",
+  "data": [
+    {
+      "Quantity": "1",
+      "Currency": "ETH",
+      "MarketAccount": "default",
+      "TxHashes": [
+        { "TxHash": "0xf9b99f898ae45f221cd08c031f148ff4cb5b0b0fde99c7d42ab232ae0c0b8ec3" }
+      ],
+      "ClReqID": "06b78113c1454174b9e403a1245d67ea"
+    }
+  ]
+}
+```
+
+## Ping
+
+A ping is a command like any other. Pings are optional and are **not** required
+to keep a session alive.
+
+```json Client → server
+{ "reqid": 2, "type": "Ping", "ts": "2024-01-13T05:17:32.000000Z" }
+```
+
+```json Server → client
+{ "reqid": 2, "type": "Pong", "seq": 0, "ts": "2024-01-13T05:17:32.002500Z" }
+```
+
+<Note>
+The command names are capitalised — `Ping` and `Pong`. An optional `data` array
+is echoed back on the pong, which is useful for round-trip latency measurement.
+</Note>

@@ -1,0 +1,234 @@
+---
+title: "Platform API"
+sidebarTitle: "Overview"
+description: "Trillion Digital's first-party REST API — conventions and design."
+---
+
+<Warning>
+**This API is in design and is not yet available.** The contract is published
+here for review and feedback before implementation. Endpoints, field names, and
+semantics may change. Nothing on this page can be called today.
+
+For a working integration, use the [Trading API](/trading-api/overview).
+</Warning>
+
+The Platform API is a first-party REST interface covering accounts, settlement,
+reporting, and reference data — the operational surface around trading, rather
+than trading itself.
+
+## What it covers
+
+The [Trading API](/trading-api/overview) covers the moment of the trade. This one
+covers everything before and after it.
+
+| Domain | Resources |
+| --- | --- |
+| **Accounts** | Accounts, entities, users, API keys and their scopes |
+| **Settlement instructions** | Registering, updating, and archiving bank details per currency and rail |
+| **Wallet addresses** | Whitelisting, screening status, asset and network bindings |
+| **Transfers** | Instructing deposits and withdrawals, and tracking them to completion |
+| **Reporting** | Trade, balance, and transaction history; statements; exports |
+| **Compliance state** | Onboarding status, review requirements, document requests |
+
+<Note>
+This API is **complementary**, not a replacement. Execution stays on the Trading
+API, where streaming is the correct model. Unsure which you need? See
+[Which API do I need?](/choosing-an-api).
+</Note>
+
+## Why it exists separately
+
+The Trading API is WebSocket-first and HMAC-signed, which is right for order flow
+and awkward for everything else. Registering a bank account or exporting last
+month's trades is ordinary request/response work, and forcing it through a
+streaming, per-message-signed transport adds cost without adding safety.
+
+Splitting it also lets this API offer what reconciliation actually needs and a
+streaming API cannot easily provide: idempotency keys, cursor pagination, dated
+versioning, and a machine-readable contract.
+
+## Making requests
+
+### Authentication
+
+All requests carry an API key in the `Authorization` header. See
+[Authentication](/platform-api/authentication).
+
+```bash
+curl -H "Authorization: Bearer tdk_test_..." https://api.trilliondigital.io/accounts
+```
+
+`tdk_test_` keys address sandbox data; `tdk_live_` keys address production and
+real money. One base URL — the key prefix selects the environment.
+
+### REST conventions
+
+All resources follow standard REST patterns.
+
+| Pattern | Meaning |
+| --- | --- |
+| `GET /resources` | List resources |
+| `POST /resources` | Create a resource |
+| `GET /resources/{id}` | Retrieve one resource |
+| `PATCH /resources/{id}` | Update a resource |
+| `POST /resources/{id}/{action}` | Perform an action, e.g. `/cancel`, `/archive` |
+
+### Versioning
+
+Date-based, pinned per request. See [Versioning](/platform-api/versioning).
+
+```bash
+curl -H "Trillion-Version: 2026-09-01" ...
+```
+
+### Idempotency
+
+`POST` and `PATCH` accept an idempotency key so retries are safe. See
+[Idempotency](/platform-api/idempotency).
+
+### Request IDs
+
+Every response carries `Trillion-Request-Id`. Quote it when contacting support.
+
+```
+Trillion-Request-Id: req_01k9m2p7q3r4s5t6v7w8x9y0z1
+```
+
+## Understanding responses
+
+### Response types
+
+<CardGroup cols={3}>
+  <Card title="Object" icon="cube">
+    A single resource — `GET /accounts/{id}`, `POST /accounts`.
+  </Card>
+  <Card title="List" icon="list">
+    A paginated collection — `GET /accounts`.
+  </Card>
+  <Card title="Action" icon="bolt">
+    The updated resource after an action — `POST /settlements/{id}/cancel`.
+  </Card>
+</CardGroup>
+
+### Pagination
+
+Cursor-based on all list endpoints. See [Pagination](/platform-api/pagination).
+
+### Errors
+
+Structured JSON with a stable machine-readable code. See
+[Errors](/platform-api/errors).
+
+## Working with data
+
+### Object IDs
+
+Every resource has a typed, prefixed ID that is globally unique and sortable by
+creation time.
+
+| Resource | Example ID |
+| --- | --- |
+| Account | `acct_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+| Trade | `trd_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+| Settlement instruction | `ssi_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+| Bank account | `bank_acct_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+| Wallet address | `addr_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+| Transfer | `txn_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+| Statement | `stmt_01k9m2p7q3r4s5t6v7w8x9y0z1` |
+
+<Tip>
+The prefix makes an ID self-describing in logs and error reports — you can tell
+what a stray identifier refers to without looking it up.
+</Tip>
+
+### Common fields
+
+Every resource carries these.
+
+<ResponseField name="id" type="string">Unique identifier.</ResponseField>
+<ResponseField name="object" type="string">Resource type, e.g. `"trade"`.</ResponseField>
+<ResponseField name="created_at" type="timestamp">When it was created.</ResponseField>
+<ResponseField name="updated_at" type="timestamp">When it was last updated.</ResponseField>
+<ResponseField name="archived_at" type="timestamp">When archived, or `null`.</ResponseField>
+<ResponseField name="custom_ref" type="string">
+  Your own reference, max 255 characters. Returned on reads and filterable.
+</ResponseField>
+<ResponseField name="custom_fields" type="object">
+  Your JSON metadata, max 4096 bytes encoded.
+</ResponseField>
+
+### Archival
+
+Resources are archived, never hard-deleted. Archived objects have `archived_at`
+set and are excluded from list responses by default.
+
+## Standards
+
+### Naming
+
+- Fields use `snake_case` — `created_at`, `settlement_currency`
+- Headers use `Title-Case` — `Trillion-Request-Id`
+- Enums use `SCREAMING_CASE` — `PENDING`, `SETTLED`
+
+### Types
+
+- Countries: ISO 3166 alpha-2 — `"US"`
+- Currencies: ISO 4217 for fiat, ticker for crypto — `"USD"`, `"USDC"`
+- Dates: ISO 8601 — `"2026-09-01"`
+- Timestamps: ISO 8601 UTC, fields end in `_at` — `"2026-09-01T00:46:06Z"`
+
+### Money
+
+All monetary values are objects, never bare numbers.
+
+```json
+{
+  "currency": "USD",
+  "exponent": 2,
+  "value": "125050",
+  "display_value": "1250.50"
+}
+```
+
+<ResponseField name="value" type="string">
+  The amount in **minor units**, as a string. `"125050"` is $1,250.50.
+</ResponseField>
+<ResponseField name="exponent" type="integer">
+  Decimal places for the currency. USD is 2; many crypto assets are 8 or 18.
+</ResponseField>
+<ResponseField name="display_value" type="string">
+  Human-readable form, for display only.
+</ResponseField>
+
+<Warning>
+Never parse `value` or `display_value` into a float. Integer minor units exist
+precisely because IEEE-754 cannot represent decimal money exactly. Use an integer
+or decimal type, and do arithmetic on `value`.
+</Warning>
+
+## The contract
+
+The full endpoint reference is generated from the OpenAPI specification and
+lives under **API reference** in the sidebar — 24 operations across accounts,
+balances, settlement instructions, bank accounts, wallet addresses, transfers,
+reporting, and compliance.
+
+<Card title="Download the OpenAPI specification" icon="download" href="/platform-api/openapi.yaml">
+  OpenAPI 3.1 · `openapi.yaml`
+</Card>
+
+<Note>
+Reading the spec directly is the fastest way to review it as a whole. Load it
+into an editor, generate a client, or point a mock server at it — the reference
+pages and the spec are the same artefact, so they cannot drift.
+</Note>
+
+## Feedback
+
+This contract is open for review. Send comments to
+[support@trilliondigital.io](mailto:support@trilliondigital.io) — changes are
+substantially cheaper now than after implementation.
+
+Most valuable feedback, in order: resources or fields you need that are missing;
+anywhere the shape would force awkward code on your side; and any place the
+naming does not match what you would expect from the domain.

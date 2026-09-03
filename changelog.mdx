@@ -1,0 +1,99 @@
+---
+title: "Changelog"
+description: "Platform and API changes, newest first."
+---
+
+<Update label="2026-09-02" description="Complete FIX reference; Client API renamed">
+
+## Full FIX 2.50 reference
+
+The FIX section now documents the complete specification rather than a summary.
+New pages for [session-level messages](/trading-api/fix/session) including the
+exact logon signature construction, [market data](/trading-api/fix/market-data),
+[orders](/trading-api/fix/orders), [security list](/trading-api/fix/security-list),
+[order strategies](/trading-api/fix/strategies),
+[state change matrices](/trading-api/fix/state-matrices), and
+[worked example messages](/trading-api/fix/examples).
+
+Notable behaviour that was previously undocumented:
+
+- **Cancel on Disconnect** is on by default and is **per session** — it does not
+  touch orders placed through the UI, the WebSocket API, or another FIX session.
+  Override per order with `CancelOnDisconnect` (20030) = `N`.
+- **Drop copy** means your session receives execution reports for orders it never
+  submitted, carrying `ClOrdID` values your engine has not issued.
+- Market data **delta updates** and **strategy/algo parameters over FIX** are both
+  future releases. Every update today is a full snapshot, and orders route with
+  the default strategy regardless of what you send.
+
+## WebSocket reference corrections
+
+- The [`Security`](/trading-api/websocket/streams/security) and
+  [`Currency`](/trading-api/websocket/streams/currency) streams are
+  **delta after the initial snapshot**, not a full set on every message. Merge,
+  do not replace.
+- [`CurrencyConversion`](/trading-api/websocket/streams/currency#currencyconversion)
+  is fully documented, including its `Throttle` and `Tolerance` parameters — the
+  stream is deliberately lazy and its rates are not live prices.
+- New page: [WebSocket order strategies](/trading-api/websocket/order-strategies)
+  covering SteadyPace and StopLimit parameters.
+
+## Client API renamed to Platform API
+
+"Trading API" and "Client API" did not describe the split — both are for clients.
+The second API is now the **[Platform API](/platform-api/overview)**: accounts,
+settlement instructions, wallet addresses, transfers, and reporting. Everything
+around the trade, where the Trading API covers the trade itself.
+
+New page: [Which API do I need?](/choosing-an-api).
+
+</Update>
+
+<Update label="2026-09-02" description="Documentation launch">
+
+## Documentation site launched
+
+This site replaces the API documentation previously distributed as a PDF and the
+reference page inside the client application.
+
+**Trading API** — full reference for the WebSocket, REST, and FIX interfaces,
+including every stream and command:
+
+- [Authentication](/trading-api/authentication) with the four signing pitfalls
+  that cause most `401` responses
+- [Connection lifecycle](/trading-api/connection-lifecycle) — heartbeats,
+  half-open detection, resubscription
+- Complete stream reference — [MarketDataSnapshot](/trading-api/websocket/streams/market-data-snapshot),
+  [Security](/trading-api/websocket/streams/security),
+  [Quote](/trading-api/websocket/streams/quote),
+  [Order](/trading-api/websocket/streams/order),
+  [Trade](/trading-api/websocket/streams/trade),
+  [Balance](/trading-api/websocket/streams/balance),
+  [Exposure](/trading-api/websocket/streams/credit)
+- All [WebSocket commands](/trading-api/websocket/commands) with payloads
+- Full [REST endpoint](/trading-api/rest/endpoints) list
+- [Errors](/trading-api/errors) including the complete rejection-reason tables
+
+**New: Postman collection.** An importable
+[collection and sandbox environment](/trading-api/sdks/postman) with request
+signing wired into a collection-level pre-request script.
+
+**New: reference clients.** Production-shaped
+[Python](/trading-api/sdks/python) and
+[TypeScript](/trading-api/sdks/typescript) WebSocket clients with reconnection,
+resubscription, and half-open detection.
+
+**Knowledge Center** — onboarding, entities, trading, settlement, whitelisting,
+and compliance guides.
+
+**Platform API** — the design contract for our first-party REST API, published for
+review before implementation.
+
+<Note>
+Corrections to previously published documentation: ping and pong command names
+are capitalised (`Ping` / `Pong`), and pings are optional rather than required to
+keep a session alive. The client-facing REST surface is historical OHLCV data —
+see [REST endpoints](/trading-api/rest/endpoints).
+</Note>
+
+</Update>

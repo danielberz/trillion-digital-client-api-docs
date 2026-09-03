@@ -1,0 +1,62 @@
+---
+title: "Users and roles"
+description: "Adding users, permissions, and authentication."
+---
+
+Platform access is per named user. Users are invited by email, set their own
+credentials, and enrol multi-factor authentication before they can sign in.
+
+## Adding a user
+
+<Steps>
+  <Step title="Request the addition">
+    An authorised signatory requests the new user via your account manager or
+    [support@trilliondigital.io](mailto:support@trilliondigital.io).
+  </Step>
+  <Step title="Verification">
+    New users are subject to identity verification and screening, as at
+    onboarding.
+  </Step>
+  <Step title="Invitation">
+    The user receives an email invitation, sets a password, and enrols MFA.
+  </Step>
+</Steps>
+
+<Warning>
+Accounts are personal and must not be shared. Shared logins break the audit trail
+that ties an instruction to the person who gave it — which matters most precisely
+when something has gone wrong and needs reconstructing.
+</Warning>
+
+## Authentication
+
+<CardGroup cols={2}>
+  <Card title="Multi-factor authentication" icon="shield-halved">
+    Required for all users. Enrolled at first sign-in.
+  </Card>
+  <Card title="Single sign-on" icon="key">
+    Available for clients with a compatible identity provider. Ask your account
+    manager.
+  </Card>
+</CardGroup>
+
+## Removing access
+
+Notify us **immediately** when a user leaves or changes role. Removal is
+effective on processing, and any API credentials issued to that user are revoked
+at the same time.
+
+<Note>
+API keys are credentials in their own right and are not tied to a browser
+session. Revoking a user's login does not by itself stop an integration that is
+using a key — say explicitly which keys should be revoked.
+</Note>
+
+## API credentials
+
+API keys are issued per environment on request and are separate from user logins.
+See [Authentication](/trading-api/authentication).
+
+Rotate keys periodically and whenever someone with access to them leaves. Request
+rotation through
+[support@trilliondigital.io](mailto:support@trilliondigital.io).

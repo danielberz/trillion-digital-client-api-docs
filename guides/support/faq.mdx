@@ -1,0 +1,377 @@
+---
+title: "FAQ"
+description: "Common questions, with the answers that actually resolve them."
+---
+
+## Access and credentials
+
+<AccordionGroup>
+  <Accordion title="How do I get API credentials?">
+    Email [support@trilliondigital.io](mailto:support@trilliondigital.io) stating
+    which environment you need. Sandbox and production keys are issued
+    separately and are not interchangeable.
+  </Accordion>
+  <Accordion title="Can I use my sandbox key against production?">
+    No. Keys are environment-specific. The host is also part of the signed
+    payload, so pointing a sandbox integration at production requires changing
+    both the URL and the string you sign.
+  </Accordion>
+  <Accordion title="I was sent to the live terminal but I want sandbox.">
+    Sandbox is at `sandbox.trading.trilliondigital.io`. If a link took you
+    somewhere else, use that address directly and tell your account manager.
+  </Accordion>
+  <Accordion title="Who can act on my account from a chat channel?">
+    Anyone who can post in it, to the extent of their role. Three levels are set
+    per member when the channel is provisioned: **view** sees prices,
+    instruments, and recent activity; **quote** can open an RFQ but cannot commit
+    the account; **book** can book, amend, and cancel. Send `/help` in your own
+    channel — it reports what *your* role can do, which no documentation table
+    can. See
+    [Chat permissions](/guides/trading/execution-channels#permissions).
+  </Accordion>
+  <Accordion title="Someone with access has left. What do we need to tell you?">
+    Say specifically **which API keys to revoke**, not just which login to
+    disable. API keys are not tied to a browser session, so revoking someone's
+    portal access does not stop an integration running under a key they held.
+    Remove them from the dealing channel at the same time. See
+    [Removing access](/guides/accounts/users-and-roles#removing-access).
+  </Accordion>
+</AccordionGroup>
+
+## Authentication
+
+<AccordionGroup>
+  <Accordion title="Every request returns 401.">
+    In order of likelihood: the timestamp does not have exactly six fractional
+    digits; the host in the signed string includes `https://` or a port; the
+    signature is standard rather than URL-safe base64; or the same timestamp was
+    not used in both the header and the signed payload. See
+    [Authentication](/trading-api/authentication).
+  </Accordion>
+  <Accordion title="It worked, then started failing.">
+    Almost always clock drift. Signatures are timestamp-bound — sync against NTP.
+  </Accordion>
+  <Accordion title="Can I cache the signature?">
+    No. It is valid only for the moment it was generated. This is why a saved
+    Postman request fails on its second send — see
+    [Postman](/trading-api/sdks/postman).
+  </Accordion>
+</AccordionGroup>
+
+## Trading
+
+<AccordionGroup>
+  <Accordion title="My order was rejected. Why?">
+    Check `OrdRejReason` on the `ExecutionReport`. The most common causes are
+    increment violations and `OrderExceedsLimit`. See
+    [Errors](/trading-api/errors).
+  </Accordion>
+  <Accordion title="I sent an order but saw no result.">
+    Subscribe to `Order` and `ExecutionReport` **before** sending commands.
+    Command responses are acknowledgements — the outcome is published on the
+    stream, so subscribing afterwards means missing it.
+  </Accordion>
+  <Accordion title="Does OrderQty mean coins or currency?">
+    Whichever `Currency` says. On `BTC-USD` with `Currency: "BTC"` it is
+    bitcoin; with `Currency: "USD"` it is dollars of notional. Always set it
+    explicitly.
+  </Accordion>
+  <Accordion title="My quote expired before I could accept it.">
+    Quotes expire — by default after about three minutes, with `ValidUntilTime`
+    authoritative. Request a new one; the price may differ.
+  </Accordion>
+  <Accordion title="I have a balance but orders are rejected for funds.">
+    You are likely sizing against `Amount` rather than `AvailableAmount`.
+    Available excludes funds committed to working orders and pending
+    withdrawals.
+  </Accordion>
+</AccordionGroup>
+
+## Pricing
+
+<AccordionGroup>
+  <Accordion title="AvgPx and my own P&L disagree.">
+    `AvgPx` on an [`ExecutionReport`](/trading-api/websocket/streams/order) is
+    the average fill price **excluding fees**. `TradedPx` on a
+    [`Quote`](/trading-api/websocket/streams/quote) is all-in and **includes**
+    them. A book marked off `AvgPx` understates cost by exactly the fee, every
+    time and in the same direction — so it reconciles cleanly against itself.
+
+    Reconcile from the [`Trade`](/trading-api/websocket/streams/trade) stream,
+    which carries `Fee`, `FeeCurency`, and `Amount` explicitly. Do not assume the
+    fee currency: on a partially filled order the `ExecutionReport`'s
+    `LastFeeCurency` can differ from the cumulative `FeeCurency`.
+  </Accordion>
+  <Accordion title="Does the channel I trade through change my price?">
+    No. The same trade in the same size prices the same by phone, chat, portal,
+    or API — see
+    [They converge](/guides/trading/execution-channels#they-converge).
+
+    What does change the price is **size relative to the market**, which is a
+    different question from how the request reached us. A fully automated desk
+    should still call for a block that would move the screen.
+  </Accordion>
+  <Accordion title="The streaming price and the RFQ price differ.">
+    A
+    [`MarketDataSnapshot`](/trading-api/websocket/streams/market-data-snapshot)
+    publishes levels against the security's `SizeBuckets`; an RFQ returns a firm
+    price for the size you actually asked for. Comparing a top-of-book level
+    against a quote in size is not like-for-like. If a screen price looks wrong
+    for the size you want, call the desk rather than trade on it — see
+    [How OTC trading works](/guides/trading/how-otc-trading-works).
+  </Accordion>
+  <Accordion title="Can I mark my book off the CurrencyConversion rate?">
+    Not for anything that matters. The stream is deliberately lazy: updates are
+    throttled to at most one every `Throttle` — minimum **and** default `10s` —
+    and are suppressed entirely until the rate moves by at least `Tolerance`,
+    minimum and default `0.0001`. A rate can therefore be ten seconds old and a
+    basis point off while the stream is behaving exactly as specified.
+
+    Use it for display and reporting; price and size from market data or an RFQ.
+    For balances you do not need it at all — the
+    [`Balance`](/trading-api/websocket/streams/balance) subscription takes an
+    `EquivalentCurrency` parameter and returns converted amounts inline. See
+    [CurrencyConversion](/trading-api/websocket/streams/currency#currencyconversion).
+  </Accordion>
+</AccordionGroup>
+
+## Assets and networks
+
+<AccordionGroup>
+  <Accordion title="How do I find what I can actually trade?">
+    Your account's live list, and nothing else. Over the WebSocket API that is
+    the [`Security`](/trading-api/websocket/streams/security) stream; in the
+    terminal it is the instrument selector; in chat it is `/pairs`. Over FIX,
+    request the security list — `SecurityListRequestType` supports only `4`
+    (ALL_SECURITIES), so there is no server-side symbol filter and you filter
+    client-side.
+
+    Securities are added and withdrawn over time. On the `Security` stream a
+    withdrawal arrives as `UpdateAction: "Remove"`, and a client that ignores it
+    carries on quoting and sizing against something it can no longer trade. See
+    [Instruments](/guides/trading/instruments).
+  </Accordion>
+  <Accordion title="The same asset exists on two chains. Does that matter?">
+    More than the address does. A whitelisted destination is approved for **one
+    asset on one network**, and the same address string can be syntactically
+    valid on several EVM chains while the funds are only recoverable on one of
+    them. Sending on the wrong network is generally unrecoverable — there is no
+    support process that reverses it, because there is nothing to reverse.
+
+    Register the same address separately for each asset and network you intend to
+    use it for. See
+    [Asset and network binding](/guides/settlement/wallet-whitelisting#asset-and-network-binding).
+  </Accordion>
+  <Accordion title="Which networks and assets does the platform support?">
+    [Assets and networks](/guides/trading/assets-and-networks) lists the networks
+    and assets the platform models.
+
+    <Warning>
+    That page is **what the platform supports, not what is enabled on your
+    account.** What you can trade follows from your entitlements, your facing
+    [entity](/guides/accounts/entities), and your commercial terms; what you can
+    withdraw follows from your whitelist. Your onboarding documentation is the
+    actual set, and your account manager is authoritative where the two differ.
+    </Warning>
+  </Accordion>
+  <Accordion title="Which chains need a memo or destination tag?">
+    The ones where a single address serves many holders and the tag is what
+    distinguishes them. Of the networks the platform models, those are Ripple,
+    Stellar, Cosmos, TON, and Algorand — see
+    [Memo and destination-tag networks](/guides/trading/assets-and-networks#memo-and-destination-tag-networks).
+    The registration form asks for the tag wherever the network requires one.
+
+    <Warning>
+    Omitting a required memo does not fail. The transfer confirms on-chain and
+    the explorer shows a success, while the receiving institution has funds it
+    cannot attribute to you — recovery is manual at the far end and sometimes
+    does not happen at all. Register the memo alongside the address so it is
+    applied automatically rather than remembered. See
+    [Memos and destination tags](/guides/settlement/crypto#memos-and-destination-tags).
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Connectivity
+
+<AccordionGroup>
+  <Accordion title="My WebSocket goes quiet but never disconnects.">
+    A half-open TCP connection. It never fires a close event, so reconnect logic
+    never triggers. Send periodic pings and force a reconnect when traffic stops
+    — see [Connection lifecycle](/trading-api/connection-lifecycle).
+  </Accordion>
+  <Accordion title="After reconnecting I get no data.">
+    Subscriptions do not survive a disconnect. Replay them on reconnect.
+  </Accordion>
+  <Accordion title="My history query is missing older records.">
+    The stream paged and the `next` value was not followed. See
+    [Subscriptions](/trading-api/websocket/subscriptions#page-a-large-stream).
+  </Accordion>
+</AccordionGroup>
+
+## Reporting
+
+<AccordionGroup>
+  <Accordion title="My end-of-day reconciliation is short of the blotter.">
+    Check paging before investigating anything else. `Trade`, `Order`, and
+    `BalanceTransaction` page over a wide date range: the payload carries a
+    `next` value, and a client that does not echo it back in a `page` request
+    receives the first page only. No error is raised, so the job reports success
+    on a truncated set — see
+    [Page a large stream](/trading-api/websocket/subscriptions#page-a-large-stream).
+
+    Then subscribe with `StartDate` set to the `Timestamp` of the last trade you
+    durably recorded rather than to midnight. Overlap costs nothing, because
+    `TradeID` makes reprocessing idempotent.
+  </Accordion>
+  <Accordion title="A trade I already recorded has disappeared.">
+    It has not been deleted — its `TradeStatus` moved. A trade can go to
+    `Canceled` **after** appearing as `Pending` or `Confirmed`.
+
+    The mirror image is the dangerous one: a booking system that treats the first
+    `Trade` message it sees as final never learns about the cancellation and
+    carries the trade indefinitely. Key on `TradeID` and always apply the latest
+    status. See
+    [Trade lifecycle](/guides/trading/trade-lifecycle).
+  </Accordion>
+  <Accordion title="Every buy and sell looks inverted against my system.">
+    `Side` is stated from **your** perspective, on the confirmation and on the
+    [`Trade`](/trading-api/websocket/streams/trade) stream. A downstream system
+    that records the dealer's side shows every trade backwards — and because it
+    is wrong uniformly, the totals still foot and the feed looks healthy. See
+    [Reading a confirmation](/guides/trading/trade-lifecycle#reading-a-confirmation).
+  </Accordion>
+</AccordionGroup>
+
+## Settlement
+
+<AccordionGroup>
+  <Accordion title="Can I withdraw to an address not on the whitelist?">
+    No. Every destination must be registered and screened first. See
+    [Wallet whitelisting](/guides/settlement/wallet-whitelisting).
+  </Accordion>
+  <Accordion title="I submitted several wallets and only one was accepted.">
+    Usually a label collision — labels must be unique within your account, so a
+    second submission reusing a label conflicts with the first. Resubmit with
+    distinct labels.
+  </Accordion>
+  <Accordion title="My wire was returned.">
+    Most often an incomplete beneficiary address. Wire rails require street,
+    town, and country on both the beneficiary and the bank. See
+    [Fiat settlement](/guides/settlement/fiat).
+  </Accordion>
+  <Accordion title="My wire was refused because the beneficiary banks with the same institution.">
+    Some banks will not wire to their own customer and require their internal
+    rail instead. The beneficiary has to be re-registered with that network's
+    identifier — a rail address, UUID, or email depending on the network. See
+    [Internal settlement networks](/guides/settlement/fiat#internal-settlement-networks).
+  </Accordion>
+  <Accordion title="Can I use an internal rail to move money between my own accounts?">
+    No. Internal networks pay *other* customers of the same institution; a move
+    between your own accounts is a book transfer. Institutions enforce this and
+    will refuse a self-addressed rail transfer outright.
+  </Accordion>
+  <Accordion title="Why can't I edit a registered bank account or rail address?">
+    Changes are treated as a new registration so they are re-verified and
+    re-screened. Rail addresses in particular are resolved at creation and are
+    immutable afterwards. See
+    [Bank account whitelisting](/guides/settlement/bank-accounts).
+  </Accordion>
+  <Accordion title="Can I cancel a withdrawal?">
+    Only while it is `PendingApproval`. Once it reaches `PendingTransfer` it
+    cannot be recalled — and once an on-chain transaction is broadcast, nobody
+    can recall it.
+  </Accordion>
+  <Accordion title="Can you pay a third party?">
+    Settlement is to accounts in your own name. Third-party payments need
+    compliance review in advance.
+  </Accordion>
+</AccordionGroup>
+
+## Banking and entities
+
+<AccordionGroup>
+  <Accordion title="A currency or rail I have read about is not available to me.">
+    The rail and currency tables on
+    [Fiat settlement](/guides/settlement/fiat) are what the **platform**
+    supports. What you can use follows from the Trillion Digital entity you face
+    and the institutions that entity banks with, and that is settled at
+    onboarding rather than at instruction time. A currency or internal network
+    offered through one entity may simply not exist on another.
+
+    Ask before concluding it is unavailable: some internal networks are arranged
+    through your account manager and do not appear in the self-service
+    registration form even when they are open to you. See
+    [Entities](/guides/accounts/entities).
+  </Accordion>
+  <Accordion title="A destination I registered is not visible on my other account.">
+    Entities are operationally segregated. Each is a separate account with
+    separate API credentials, separate settlement instructions, and a separate
+    whitelist — registering a bank account or wallet against one does not
+    register it against the other, even though it is the same underlying account
+    in the same name. Balances do not net across them and credit extended to one
+    is not headroom for the other.
+
+    <Warning>
+    This fails quietly rather than loudly. The symptom is a validation error for
+    a destination that obviously exists, because it exists on the *other*
+    account — so the instinct is to re-register it, which produces a second
+    registration and a second thing to keep current. Confirm which account you
+    are operating on first. See
+    [Working with more than one entity](/guides/accounts/entities#working-with-more-than-one-entity).
+    </Warning>
+  </Accordion>
+  <Accordion title="Which banking partners sit behind my account?">
+    Dedicated integrations exist with Anchorage, Cobre, Cross River, Customers
+    Bank, Erebor, and FV Bank. Which of them sits behind *your* account follows
+    from your entity, and it is why one client can settle over an internal
+    network another has never been offered.
+
+    <Warning>
+    That is the platform's set of integrations, not a list of banks available to
+    you. Your onboarding documentation names the partners that apply to your
+    account; your account manager is authoritative.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Operating
+
+<AccordionGroup>
+  <Accordion title="I traded on Friday and it settled Monday.">
+    Each rail has a daily cut-off, and an instruction after it is processed on
+    the next business day — which on a Friday is Monday, and later where a
+    holiday falls on either side. Cut-offs vary by rail, currency, and
+    jurisdiction, so a Friday afternoon comfortably inside the cut-off for one
+    rail is outside it for another.
+
+    The cut-offs and holiday calendars applicable to your account are in your
+    onboarding documentation — confirm them with your account manager rather than
+    inferring them from a payment that happened to arrive quickly. Book transfers
+    and internal networks sidestep the problem entirely, because they never reach
+    an external clearing system. See
+    [Cut-off times](/guides/settlement/overview#cut-off-times).
+  </Accordion>
+  <Accordion title="One leg of my trade has settled and the other has not.">
+    Balances update as **each leg completes**, and the two legs move over
+    unrelated infrastructure. A crypto leg credits once it reaches the
+    confirmation threshold for that asset and network; a fiat leg follows its
+    rail and the banking calendar. A crypto leg crediting well ahead of the fiat
+    leg is the ordinary shape of a cross-asset trade, not a fault.
+
+    Raise anything that looks wrong **before** the value date. See
+    [Trade lifecycle](/guides/trading/trade-lifecycle).
+  </Accordion>
+  <Accordion title="A trade I did over the phone is not in the blotter yet.">
+    Booking a voice trade is a human step — it appears once the trader has booked
+    it, whereas portal and API orders book immediately. Nothing downstream
+    differs: same blotter, same `TradeID`, same settlement path. If it has not
+    appeared, raise it rather than waiting it out. See
+    [One ledger](/guides/trading/execution-channels#one-ledger-updated-in-real-time).
+  </Accordion>
+</AccordionGroup>
+
+## Still stuck?
+
+See [Contact](/guides/support/contact) for what to include so the first reply is
+the useful one.

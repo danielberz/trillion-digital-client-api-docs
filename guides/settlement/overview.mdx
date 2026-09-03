@@ -1,0 +1,134 @@
+---
+title: "Settlement"
+sidebarTitle: "Overview"
+description: "How the two legs of a trade actually move."
+---
+
+Every trade has two legs. Settlement is the process of moving both against
+pre-registered instructions.
+
+<CardGroup cols={2}>
+  <Card title="Fiat" icon="building-columns" href="/guides/settlement/fiat">
+    Domestic and international wires, plus internal settlement networks where
+    both sides bank at the same institution.
+  </Card>
+  <Card title="Crypto" icon="link" href="/guides/settlement/crypto">
+    On-chain transfers to whitelisted wallet addresses.
+  </Card>
+</CardGroup>
+
+## The rule that matters most
+
+<Warning>
+**Settlement destinations must be registered and screened before they can be
+used.** This applies to both bank accounts and wallet addresses.
+
+Registration is not instant — it involves screening and, for wallets,
+verification. A trade that executes before its destination is registered will sit
+unsettled until it is. Register destinations during onboarding, not on the day
+you need them.
+</Warning>
+
+## Prerequisites
+
+<Steps>
+  <Step title="Register settlement instructions">
+    The instruction that says which rail a currency settles over. See
+    [Settlement instructions](/guides/settlement/settlement-instructions).
+  </Step>
+  <Step title="Whitelist bank accounts">
+    Every fiat destination, verified and approved before it can be paid. See
+    [Bank account whitelisting](/guides/settlement/bank-accounts).
+  </Step>
+  <Step title="Whitelist wallet addresses">
+    Every crypto destination, per asset and network. See
+    [Wallet whitelisting](/guides/settlement/wallet-whitelisting).
+  </Step>
+  <Step title="Confirm the value date">
+    Stated on the trade confirmation.
+  </Step>
+  <Step title="Ensure funds are in place">
+    Your leg must be funded and available — not merely present. See the note on
+    available balance below.
+  </Step>
+</Steps>
+
+## Available versus total balance
+
+Your total balance and your available balance are different numbers.
+
+<ResponseField name="Amount">The total balance held.</ResponseField>
+<ResponseField name="AvailableAmount">
+  What you can actually use — total, less funds committed to working orders and
+  pending withdrawals.
+</ResponseField>
+
+<Warning>
+Size trades and withdrawals against `AvailableAmount`. Using the total balance is
+a reliable way to have an instruction rejected for insufficient funds while the
+account visibly holds enough.
+</Warning>
+
+## Cut-off times
+
+Each rail has a daily cut-off, after which an instruction is processed on the
+next business day. Cut-offs vary by rail, currency, and jurisdiction, and
+business days follow the relevant banking calendar.
+
+<Note>
+Cut-off times and holiday calendars applicable to your account are provided in
+your onboarding documentation. Confirm them with your account manager rather than
+assuming — a missed cut-off on a Friday can mean settlement on Monday.
+</Note>
+
+## Tracking settlement
+
+```mermaid
+stateDiagram-v2
+    [*] --> PendingApproval: instruction raised
+    PendingApproval --> PendingTransfer: approved
+    PendingApproval --> Rejected: refused
+    PendingApproval --> Canceled: cancellable HERE only
+    PendingTransfer --> Completed: settled
+    PendingTransfer --> Rejected: failed in transit
+    Completed --> [*]
+    Rejected --> [*]
+    Canceled --> [*]
+```
+
+<Warning>
+`PendingApproval` is the **only** cancellable state. Once an instruction reaches
+`PendingTransfer` it is with the rail and can no longer be recalled through the
+platform — and for an on-chain transfer, once broadcast it cannot be recalled by
+anyone.
+</Warning>
+
+
+Settlement progress is visible in the platform and, over the API, on the
+[`BalanceTransaction`](/trading-api/websocket/streams/balance) stream:
+
+| Status | Meaning |
+| --- | --- |
+| `PendingApproval` | Awaiting internal approval — still cancellable |
+| `PendingTransfer` | Approved, being transmitted — no longer cancellable |
+| `Completed` | Settled |
+| `Rejected` | Not processed; see the accompanying detail |
+
+## If settlement does not arrive
+
+<Steps>
+  <Step title="Check status">
+    Confirm the instruction is `Completed` rather than pending or rejected.
+  </Step>
+  <Step title="Allow for the rail">
+    Different rails clear on different timescales. Internal book transfers are
+    effectively immediate; international wires are not.
+  </Step>
+  <Step title="Confirm the destination">
+    Verify the registered destination is the one you expect.
+  </Step>
+  <Step title="Contact us">
+    Email [support@trilliondigital.io](mailto:support@trilliondigital.io) with
+    the trade ID and transaction ID.
+  </Step>
+</Steps>

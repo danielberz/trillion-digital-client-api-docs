@@ -1,0 +1,101 @@
+---
+title: "Exposure"
+sidebarTitle: "Credit & exposure"
+description: "Real-time credit utilisation against your limit."
+---
+
+Streams your current credit utilisation and limit. Subscribe to this if you trade
+on credit — an order that would breach the limit is rejected with
+`OrderExceedsLimit`.
+
+## Subscribe
+
+```json Client → server
+{
+  "reqid": 25,
+  "type": "subscribe",
+  "streams": [{ "name": "Exposure" }]
+}
+```
+
+### Parameters
+
+None.
+
+## Response
+
+<ResponseField name="ExposureCurrency" type="string" required>
+  The currency all exposure values are expressed in.
+</ResponseField>
+<ResponseField name="Exposure" type="decimal" required>
+  Current credit utilisation, in `ExposureCurrency`.
+</ResponseField>
+<ResponseField name="ExposureLimit" type="decimal" required>
+  Credit limit, in `ExposureCurrency`.
+</ResponseField>
+<ResponseField name="Status" type="string" required>
+  `Online` or `Offline`.
+</ResponseField>
+<ResponseField name="Timestamp" type="datetime" required>
+  When credit was last updated.
+</ResponseField>
+
+## Reading it
+
+Headroom is simply:
+
+```
+headroom = ExposureLimit − Exposure
+```
+
+Both figures are in `ExposureCurrency`, which is **not** necessarily the currency
+of the order you are about to send. A limit expressed in USD constrains a
+EUR-denominated order by its USD equivalent, so convert before comparing — see
+[`CurrencyConversion`](/trading-api/websocket/streams/currency#currencyconversion)
+or request `EquivalentCurrency` on the
+[`Balance`](/trading-api/websocket/streams/balance) stream.
+
+<Tip>
+Check headroom before submitting rather than handling an `OrderExceedsLimit`
+rejection afterwards. Pre-checking lets you **size the order down** to what fits;
+a rejection just loses the order and you start again with a stale view of the
+market.
+</Tip>
+
+## Exposure is not balance
+
+These answer different questions and are easy to conflate.
+
+| | Measures | Ask it when |
+| --- | --- | --- |
+| [`Balance`](/trading-api/websocket/streams/balance) | Funds you actually hold | Sizing against settled assets |
+| `Exposure` | Credit consumed against a limit | Trading on credit, before settlement |
+
+An account can hold a healthy `AvailableAmount` and still be refused for
+`OrderExceedsLimit`, because the constraint is the credit line rather than the
+cash. The reverse also happens.
+
+## When the stream goes Offline
+
+<Warning>
+When `Status` is `Offline` the figures are **stale**, and the platform is telling
+you so explicitly. Do not gate order submission on a stale exposure number —
+either pause trading or fall back to your own conservative estimate until the
+stream returns to `Online`.
+
+`Timestamp` tells you how stale. A number that has not moved while you have been
+trading is a much stronger signal of a feed problem than of genuinely flat
+utilisation.
+</Warning>
+
+## Credit limits over REST
+
+There is no REST equivalent — exposure is available over the stream only. That
+is the right shape for it: a credit check is a pre-trade decision, and a polled
+figure is stale by definition.
+
+<Note>
+Whether you trade on credit at all, and the size of the line, are commercial
+terms set for your account. If `ExposureLimit` is not what you expect, that is a
+conversation with your account manager rather than an API issue.
+</Note>

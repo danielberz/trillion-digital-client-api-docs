@@ -1,0 +1,81 @@
+{
+  "info": {
+    "name": "Trillion Digital — Trading API (REST)",
+    "description": "The REST surface of the Trillion Digital Trading API.\n\nSet `host`, `apiKey`, and `apiSecret` in the environment. The collection-level pre-request script generates a fresh ApiTimestamp and ApiSign before every request — signatures are timestamp-bound and cannot be reused.\n\nSCOPE: the client-facing REST surface is historical OHLCV market data. Order entry, RFQ, execution reports, trades, balances and transfers all run over the WebSocket API, which a static Postman collection cannot represent. See https://docs.trilliondigital.io/trading-api/websocket/overview\n\nThe real value of this collection is the signing script — it is the part that is easy to get wrong, and it is reusable for any request you add.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Trillion Digital request signing.",
+          "// Builds: METHOD\\n<ApiTimestamp>\\n<host>\\n<path>[\\n<query>][\\n<body>]",
+          "// then HMAC-SHA256 with the API secret, URL-safe base64 (padding retained).",
+          "",
+          "const secret = pm.environment.get('apiSecret');",
+          "const key = pm.environment.get('apiKey');",
+          "const host = pm.environment.get('host');",
+          "",
+          "if (!secret || !key || !host) {",
+          "    throw new Error('Set host, apiKey and apiSecret in your Postman environment.');",
+          "}",
+          "",
+          "// ISO-8601 UTC with exactly six fractional digits.",
+          "const ts = new Date().toISOString().replace('Z', '000Z');",
+          "",
+          "const method = pm.request.method.toUpperCase();",
+          "const path = '/' + pm.request.url.path.join('/');",
+          "const query = pm.request.url.getQueryString({ ignoreDisabled: true });",
+          "const body = (pm.request.body && pm.request.body.raw) ? pm.request.body.raw : '';",
+          "",
+          "const parts = [method, ts, host, path];",
+          "if (query) { parts.push(query); }",
+          "if (body) { parts.push(body); }",
+          "",
+          "const payload = parts.join('\\n');",
+          "",
+          "const sign = CryptoJS.enc.Base64",
+          "    .stringify(CryptoJS.HmacSHA256(payload, secret))",
+          "    .replace(/\\+/g, '-')",
+          "    .replace(/\\//g, '_');",
+          "",
+          "pm.environment.set('apiTimestamp', ts);",
+          "pm.environment.set('apiSign', sign);"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://{{host}}",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Market data",
+      "item": [
+        {
+          "name": "OHLCV bars",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "ApiKey", "value": "{{apiKey}}" },
+              { "key": "ApiTimestamp", "value": "{{apiTimestamp}}" },
+              { "key": "ApiSign", "value": "{{apiSign}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/symbols/BTC-USD/ohlcv/1D",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "symbols", "BTC-USD", "ohlcv", "1D"]
+            },
+            "description": "Historical open/high/low/close/volume bars.\n\nReplace BTC-USD with a symbol published on the Security stream, and 1D with a resolution enabled for your account.\n\nA 200 here proves your key, secret, timestamp format and signature construction are all correct — which is the point of running it first. A 401 means the signature is wrong; see https://docs.trilliondigital.io/trading-api/authentication"
+          }
+        }
+      ]
+    }
+  ]
+}
