@@ -19,6 +19,20 @@ A price that already includes fees. `TradedPx` on the
 executed RFQ against a benchmark on `AvgPx` understates what the trade cost you,
 because the fee sits outside that number.
 
+## AllowedSlippage
+
+Absolute allowed price movement on a Limit order placed against an RFQ, expressed
+as a decimal — `0.001` is 10 bps, not 0.1%. Set on
+[`NewOrderSingle`](/trading-api/websocket/commands#neworldersingle).
+
+## AmountCurrency
+
+The currency `Amount` is expressed in, and the third of three currency fields on a
+trade. `Currency` says what the quantity is in, `AmountCurrency` what the value is
+in, and `FeeCurency` what the fee is in — none of the three is guaranteed to match
+the others. Reconciling on the wrong one silently mixes units. See
+[Pricing and fees](/guides/trading/pricing-and-fees).
+
 ## Available balance
 
 `AvailableAmount` on the [`Balance`](/trading-api/websocket/streams/balance)
@@ -33,11 +47,25 @@ Average fill price on the order streams, meaningful only when `CumQty > 0`, and
 **excluding fees**. To get the economic price of a fill, take `Fee` and `Amount`
 from the [`Trade`](/trading-api/websocket/streams/trade) record.
 
+## Banking calendar
+
+The set of days a rail actually settles on. The calendar that governs is the
+**receiving** jurisdiction's, not yours, which is why a payment can sit over a
+holiday you do not observe. See
+[Operating hours](/guides/operating-hours).
+
 ## Base currency
 
 The first leg of a `BASE-QUOTE` symbol — the asset being priced. Buying `BTC-USD`
 means receiving BTC and paying USD. See
 [Instruments](/guides/trading/instruments).
+
+## Beneficiary
+
+The party being paid, and the name that must match the account record at the
+receiving bank exactly. Trading names and abbreviations that differ from the
+registered legal name are a routine cause of returned payments. See
+[Bank account whitelisting](/guides/settlement/bank-accounts).
 
 ## Blotter
 
@@ -53,6 +81,13 @@ Distinct from an internal settlement network, which pays a *different* customer
 of that institution — and institutions enforce the distinction, so an internal
 rail transfer addressed to your own account is refused rather than reinterpreted.
 See [Fiat settlement](/guides/settlement/fiat).
+
+## Cancel on Disconnect
+
+FIX tag `20030`, defaulting to `Y`. Orders submitted on a FIX session are cancelled
+when that session drops — but **only that session's orders**. Orders placed through
+the portal, the WebSocket API, or a second FIX session are untouched. See
+[FIX overview](/trading-api/fix/overview#cancel-on-disconnect).
 
 ## ClOrdID
 
@@ -108,6 +143,13 @@ its intent and gets a firm price on it. See
 [RFQ workflow](/guides/trading/rfq-workflow#specifying-size).
 </Warning>
 
+## Drop copy
+
+A FIX session receives execution reports for orders it did not submit, including
+those placed through the portal or other protocols. Your engine will see `ClOrdID`
+values it never issued; treating an unknown identifier as an error is a mistake.
+See [FIX overview](/trading-api/fix/overview#drop-copy).
+
 ## Entity
 
 The regulated Trillion Digital company that faces you as counterparty, assigned
@@ -116,6 +158,14 @@ available, which banking partners hold your funds, and which name appears on you
 confirmations. Two entities are two separate accounts: separate credentials,
 separate settlement registrations, and balances that do not net. See
 [Entities](/guides/accounts/entities).
+
+## EquivalentCurrency
+
+A subscription parameter on [`Balance`](/trading-api/websocket/streams/balance) and
+[`CurrencyConversion`](/trading-api/websocket/streams/currency#currencyconversion)
+that returns converted amounts alongside the native ones. Server-side conversion at
+the same instant as the balance, which is why it is preferable to converting
+yourself from a separate rate stream.
 
 ## ExecID
 
@@ -147,6 +197,21 @@ will not move against you. Quotes expire by default after roughly three minutes,
 but the quote's own `ValidUntilTime` is authoritative, and an expired quote
 cannot be accepted — you request a new one at the new market.
 
+## Half-open connection
+
+A TCP connection that is dead but never fires a close event, so automatic reconnect
+logic never triggers. The socket looks alive and no data flows. Only your own
+traffic timeout detects it. See
+[Connection lifecycle](/trading-api/connection-lifecycle).
+
+## Idempotency key
+
+A client-supplied header on Platform API writes that makes a retry safe: the same key
+replays the original response rather than repeating the action. Derive it from
+something stable in your own system and persist it **before** the request — a key
+generated at call time is regenerated on retry and defeats the mechanism. See
+[Idempotency](/platform-api/idempotency).
+
 ## Increment
 
 The granularity an instrument accepts: `MinSizeIncrement` for quantities in the
@@ -156,6 +221,19 @@ currency you expressed the order in, so the same economic order can be valid one
 way and rejected the other. Round toward zero — rounding up can push the order
 past the headroom you just checked and convert an increment problem into an
 `OrderExceedsLimit`. See [Instruments](/guides/trading/instruments).
+
+## Initial
+
+A flag on a stream message marking the snapshot that opens a subscription. Messages
+after it are **deltas** on `Security` and `Currency`, not fresh copies — a client
+that replaces its local map on each message rather than merging silently empties its
+own security master.
+
+## Intermediary bank
+
+A correspondent bank in the path of an international payment. Where the receiving
+bank requires one and it is absent, the payment fails in transit rather than being
+rejected up front. See [Fiat settlement](/guides/settlement/fiat).
 
 ## Internal settlement network
 
@@ -216,6 +294,14 @@ the wrong network is generally unrecoverable — no support process reverses it.
 See [Wallet whitelisting](/guides/settlement/wallet-whitelisting).
 </Warning>
 
+## Order strategy
+
+An execution algorithm named on an order. `SteadyPace` slices an order into clips at
+a fixed interval; `StopLimit` and `TakeProfitLimit` trigger on price. Only
+`SteadyPace` orders can be amended. Note that specifying strategy parameters over
+FIX is not yet supported — see
+[Order strategies](/trading-api/fix/strategies).
+
 ## OrderID
 
 The server's identifier for an order, assigned on acceptance. One `OrderID` can
@@ -229,6 +315,18 @@ The order's current state — `New`, `PartiallyFilled`, `Filled`, `Canceled`,
 `Rejected`, and the pending variants. This is the field to drive your state
 machine from; `ExecType` describes the event that caused the change, not the
 resulting position.
+
+## OrdType
+
+`Market`, `Limit`, or `RFQ`. `Limit` requires `Price`; `RFQ` requires both `RFQID`
+and `QuoteID` so the order binds to a specific quote rather than to the market.
+
+## Paging cursor
+
+The `next` value on a paged stream. A subscription over a wide date range returns
+pages, and a client that ignores `next` receives only the first one — with no error.
+Reconciliation jobs that appear to be missing history are usually this. See
+[Subscriptions](/trading-api/websocket/subscriptions#page-a-large-stream).
 
 ## PendingApproval and PendingTransfer
 
@@ -263,6 +361,15 @@ The second leg of a `BASE-QUOTE` symbol — the currency the price is expressed 
 It is not automatically the currency the trade settles in; check
 `SettlementCurrency` on the security.
 
+## QuoteReqID, RFQID and QuoteID
+
+Three identifiers in one RFQ, and they are not interchangeable. **`QuoteReqID`** is
+yours, generated before you ask, and must be unique and 36 characters or fewer.
+**`RFQID`** is assigned by the platform for the request. **`QuoteID`** identifies a
+single quote update — an RFQ produces many as prices move. Accepting a quote takes
+the `RFQID` and the `QuoteID` you actually want. See
+[Quote](/trading-api/websocket/streams/quote).
+
 ## Rail
 
 The scheme a fiat payment travels over — Fedwire, SEPA, SPEI, an internal
@@ -277,6 +384,12 @@ The identifier an internal settlement network uses in place of routing and
 account numbers — on the Erebor network, an `@handle` or `@routing/account`. It
 is resolved when created and then immutable, so a mistyped address is replaced by
 a fresh registration rather than edited.
+
+## reqid
+
+A client-assigned number correlating a request to every response it produces. It
+cannot be `0`. Because one connection multiplexes every subscription and command,
+an error message is meaningless unless you can attribute it by `reqid`.
 
 ## RFQ
 
@@ -300,6 +413,17 @@ counterparties, beneficiaries, and wallet addresses. It runs at registration and
 continuously afterwards, so an address approved months ago can be suspended and
 pending withdrawals to it stopped. See [KYC and KYB](/guides/compliance/kyc-kyb).
 
+## seq
+
+A per-`reqid` message counter starting at 1. Explicitly **for debugging only** — the
+client is not required to sequence or gap-detect on it, and recovery logic that
+stalls on a perceived gap is building on a signal that was never load-bearing.
+
+## Session ID
+
+Returned in the `hello` frame that opens a WebSocket session. Log it: it is the
+fastest way for support to find your connection in their logs.
+
 ## Settlement currency
 
 `SettlementCurrency` on the security — the currency a trade actually settles in,
@@ -321,6 +445,31 @@ Buy or sell, stated from **your** perspective on confirmations and on the trade
 record. A downstream system that stores the dealer's side will show every trade
 inverted against ours, so confirm which convention it expects before wiring a
 feed into it.
+
+## Sub-account
+
+A subdivision of a trading account used to segregate flow or allocate trades. Distinct
+from an [entity](/guides/accounts/entities), which is a separate legal relationship
+with its own credentials, balances and settlement destinations.
+
+## Throttle
+
+A duration string limiting how often a stream updates — `"300ms"`, `"15s"`. Valid
+units are `ns`, `us`, `ms`, `s`. Unthrottled majors produce far more messages than a
+display needs, and the cost lands on your event loop.
+
+## Time in force
+
+How long an order stays live. `GoodTillCancel` rests until filled or pulled;
+`FillAndKill` takes what is available and cancels the rest; `FillOrKill` requires the
+entire quantity at once or nothing.
+
+## Trade status
+
+`Pending`, `Confirmed`, or `Canceled` on the
+[`Trade`](/trading-api/websocket/streams/trade) record. A trade can move to
+`Canceled` **after** appearing as `Confirmed`, so key on `TradeID` and apply the
+latest status rather than recording the first message as final.
 
 ## TradedPx
 
