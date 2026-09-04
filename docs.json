@@ -88,10 +88,8 @@
                 ]
               },
               {
-                "group": "Support",
+                "group": "Reference",
                 "pages": [
-                  "guides/support/contact",
-                  "guides/support/faq",
                   "guides/glossary"
                 ]
               }
@@ -214,8 +212,12 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:support@trilliondigital.io"
+        "label": "FAQ",
+        "href": "/guides/support/faq"
+      },
+      {
+        "label": "Contact",
+        "href": "/guides/support/contact"
       },
       {
         "label": "Status",
